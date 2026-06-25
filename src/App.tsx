@@ -816,15 +816,35 @@ function App() {
   // reversing the direction trades the same pair back. Reordering the flat
   // `panes` list recomputes the layout; focus follows the moved pane (same id,
   // new index). idea #14.
-  const moveDirection = (dir: Direction) =>
-    updateActiveTab((t) => {
-      const i = Math.max(0, t.panes.indexOf(t.focused));
-      const j = pickNeighbor(t, dir);
-      if (j < 0) return t;
-      const panes = [...t.panes];
+  //
+  // For the involution to hold even when the *reverse* direction is
+  // multi-candidate (e.g. secondary→main in tall, whose reverse main→secondary
+  // can pick any secondary), we must feed the most-recent history exactly like
+  // kitty: `move_window_group` swaps the two panes, then `set_active_group_idx`
+  // pushes the DISPLACED partner to the most-recent slot, so the opposite move
+  // re-selects that same partner. The focus-history effect re-appends the
+  // still-focused pane right after, keeping it most-recent overall.
+  const moveDirection = (dir: Direction) => {
+    const s = stateRef.current;
+    const t = s.tabs.find((x) => x.id === s.activeTabId);
+    if (!t) return;
+    const i = Math.max(0, t.panes.indexOf(t.focused));
+    const j = pickNeighbor(t, dir);
+    if (j < 0) return;
+    const partner = t.panes[j];
+    const hist = activityRef.current.get(t.id) ?? [];
+    activityRef.current.set(
+      t.id,
+      [...hist.filter((id) => id !== partner), partner].slice(-64),
+    );
+    updateActiveTab((tab) => {
+      // Guard against a stale read swapping the wrong pair (no-op in practice).
+      if (tab.panes[i] !== t.focused || tab.panes[j] !== partner) return tab;
+      const panes = [...tab.panes];
       [panes[i], panes[j]] = [panes[j], panes[i]];
-      return { ...t, panes };
+      return { ...tab, panes };
     });
+  };
 
   const cycleLayout = (delta: 1 | -1) =>
     updateActiveTab((t) => ({
@@ -856,13 +876,16 @@ function App() {
     });
 
   // kitty `move_window_to_top`: promote the focused pane to index 0 so it becomes
-  // the "main" window (the big one in tall/fat). Reorders the flat list; the
-  // layout recomputes around it. ⌘⇧M.
+  // the "main" window (the big one in tall/fat). kitty does a SINGLE swap of the
+  // active pane with index 0 (move_window_group → one tuple swap), not a
+  // splice-to-front — so the pane that held index 0 takes the focused pane's old
+  // slot and the others stay put. The layout recomputes around it. ⌘⇧M.
   const promoteToMain = () =>
     updateActiveTab((t) => {
       const i = t.panes.indexOf(t.focused);
       if (i <= 0) return t;
-      const panes = [t.panes[i], ...t.panes.filter((_, k) => k !== i)];
+      const panes = [...t.panes];
+      [panes[0], panes[i]] = [panes[i], panes[0]];
       return { ...t, panes, zoomed: false };
     });
 
