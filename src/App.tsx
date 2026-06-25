@@ -54,7 +54,14 @@ interface ClosedPane {
 /** One entry in the reopen-closed history (⌘⇧T): a single pane or a whole tab. */
 type ClosedItem =
   | { kind: "pane"; pane: ClosedPane }
-  | { kind: "tab"; layout: LayoutName; focused: string; panes: ClosedPane[] };
+  | {
+      kind: "tab";
+      layout: LayoutName;
+      focused: string;
+      panes: ClosedPane[];
+      // Custom tab name (idea #17), so a renamed-then-reopened tab keeps it.
+      title?: string;
+    };
 
 interface AppState {
   tabs: Tab[];
@@ -235,6 +242,8 @@ function normalizeClosed(raw: any): ClosedItem[] {
           layout: isLayoutName(it.layout) ? it.layout : "tall",
           focused: typeof it.focused === "string" ? it.focused : panes[0].id,
           panes,
+          title:
+            typeof it.title === "string" && it.title.trim() ? it.title : undefined,
         });
       }
     }
@@ -697,7 +706,7 @@ function App() {
         return { id: pid, session: stateRef.current.sessions[pid], cwd };
       }),
     );
-    return { kind: "tab", layout: t.layout, focused: t.focused, panes };
+    return { kind: "tab", layout: t.layout, focused: t.focused, panes, title: t.title };
   };
 
   // Reopen the most recently closed pane or tab (Chrome-style ⌘⇧T). A closed
@@ -766,7 +775,7 @@ function App() {
         sessions,
         tabs: [
           ...prev.tabs,
-          { id: tid, panes: paneIds, focused, layout: item.layout },
+          { id: tid, panes: paneIds, focused, layout: item.layout, title: item.title },
         ],
         activeTabId: tid,
       };
@@ -1407,6 +1416,14 @@ function App() {
     { id: "rename-tab", group: "Onglet", title: "Renommer l'onglet actif", keywords: "nom titre", run: () => setRenamingTabId(stateRef.current.activeTabId) },
     { id: "close-tab", group: "Onglet", title: "Fermer l'onglet", hint: "⌘W", run: closeTab },
     { id: "reopen", group: "Onglet", title: "Rouvrir le dernier fermé", keywords: "undo", hint: "⌘⇧T", run: reopenClosed },
+    ...state.tabs.map((t, i) => ({
+      id: `goto-tab:${t.id}`,
+      group: "Onglet",
+      title: `Aller à l'onglet ${i + 1}${tabLabel(t) ? ` — ${tabLabel(t)}` : ""}`,
+      keywords: `onglet tab ${i + 1} ${tabLabel(t) ?? ""}`,
+      hint: i < 9 ? `⌘${i + 1}` : undefined,
+      run: () => gotoTab(i),
+    })),
     { id: "new-window", group: "Fenêtre", title: "Nouvelle fenêtre (pane)", hint: "⌘D", run: addWindow },
     { id: "close-window", group: "Fenêtre", title: "Fermer la fenêtre", hint: "⌃⇧W", run: closeFocused },
     { id: "zoom", group: "Fenêtre", title: "Agrandir / réduire (zoom)", keywords: "maximize plein écran stack", hint: "⌃⇧Z", run: toggleZoom },
@@ -1426,6 +1443,12 @@ function App() {
     { id: "scratchpad", group: "Général", title: "Bloc-notes de l'onglet", keywords: "notes todo scratchpad", hint: "⌃⇧N", run: () => setScratchpadOpen(true) },
     { id: "composer", group: "Général", title: "Composer un prompt (multi-lignes)", keywords: "prompt composer editor envoyer", hint: "⌘E", run: () => setComposerOpen(true) },
     { id: "scroll-top", group: "Défilement", title: "Aller en haut du scrollback", hint: "⌃⇧Home", run: () => scrollPane("top") },
+    { id: "scroll-page-up", group: "Défilement", title: "Défiler d'une page vers le haut", keywords: "page haut scroll", hint: "⌃⇧PgUp", run: () => scrollPane("page-up") },
+    { id: "scroll-line-up", group: "Défilement", title: "Défiler d'une ligne vers le haut", keywords: "ligne haut scroll", hint: "⌃⇧↑", run: () => scrollPane("line-up") },
+    { id: "scroll-prompt-prev", group: "Défilement", title: "Prompt précédent (OSC 133)", keywords: "prompt précédent saut", hint: "⌥⌘↑", run: () => scrollPane("prompt-prev") },
+    { id: "scroll-prompt-next", group: "Défilement", title: "Prompt suivant (OSC 133)", keywords: "prompt suivant saut", hint: "⌥⌘↓", run: () => scrollPane("prompt-next") },
+    { id: "scroll-line-down", group: "Défilement", title: "Défiler d'une ligne vers le bas", keywords: "ligne bas scroll", hint: "⌃⇧↓", run: () => scrollPane("line-down") },
+    { id: "scroll-page-down", group: "Défilement", title: "Défiler d'une page vers le bas", keywords: "page bas scroll", hint: "⌃⇧PgDn", run: () => scrollPane("page-down") },
     { id: "scroll-bottom", group: "Défilement", title: "Revenir au prompt (bas)", hint: "⌃⇧End", run: () => scrollPane("bottom") },
     ...tmuxSessions.map((s) => ({
       id: `session:${s.name}`,
