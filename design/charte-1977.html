@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>superkitty — Charte graphique « brochure 1977 »</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   superkitty — Charte graphique « brochure 1977 »
+   Variante sœur de la charte « Apple Rainbow » validée.
+   Parti-pris : brochure produit imprimée fin années 70
+   (papier crème chaud, encre brun-charbon, grand bandeau
+   arc-en-ciel, mise en page éditoriale, arc-en-ciel maison).
+   ============================================================ */
+
+:root {
+  /* —— Arc-en-ciel « maison » : six teintes chaudes, légèrement passées —— */
+  --rb-terre:   #C56B3C;  /* terre cuite */
+  --rb-moutarde:#E0A93B;  /* moutarde    */
+  --rb-olive:   #8A9A52;  /* olive       */
+  --rb-lagon:   #3F8E8C;  /* lagon       */
+  --rb-prune:   #8A5E8C;  /* prune       */
+  --rb-encre:   #45688F;  /* encre bleue */
+
+  /* —— Papier & encre (impression vintage) —— */
+  --paper:      #F3ECD7;  /* crème papier chaud */
+  --paper-2:    #EDE3C9;  /* crème un cran plus dense */
+  --paper-3:    #E6DAB9;  /* filets / surfaces creuses */
+  --card:       #FBF6E6;  /* surface relevée (encart) */
+  --ink:        #33291F;  /* brun-charbon (texte)     */
+  --ink-soft:   #6A5C49;
+  --ink-faint:  #9A8A6F;
+  --hair:       #C9B894;  /* filets fins */
+
+  /* —— Terminal (charbon chaud) —— */
+  --term-bg:    #211C15;
+  --term-fg:    #EFE6CF;
+  --term-dim:   #9C9079;
+
+  /* —— Typo —— */
+  --brand: "EB Garamond", "Apple Garamond", Garamond, "Times New Roman", serif;
+  --pixel: "Silkscreen", "Chicago", monospace;
+  --mono:  Monaco, "Cascadia Mono", "SF Mono", Menlo, monospace;
+
+  --radius: 10px;
+  --shadow: 0 10px 26px rgba(51,41,31,.14);
+  --shadow-soft: 0 4px 14px rgba(51,41,31,.10);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: var(--brand);
+  color: var(--ink);
+  background-color: var(--paper);
+  /* lavis chauds très diffus, sans rayures (on n'est pas en Platinum) */
+  background-image:
+    radial-gradient(1100px 520px at 82% -8%, rgba(197,107,60,.10), transparent 60%),
+    radial-gradient(900px 480px at -8% 8%, rgba(224,169,59,.10), transparent 60%),
+    radial-gradient(1000px 560px at 50% 118%, rgba(63,142,140,.08), transparent 62%);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.58;
+  font-size: 18px;
+}
+
+/* grain d'impression léger */
+body::after {
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: .24;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+/* ===== Bandeau d'en-tête (cartouche brochure) ===== */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 16px;
+  height: 36px; padding: 0 22px;
+  background: linear-gradient(var(--paper-2), var(--paper));
+  border-bottom: 1px solid var(--hair);
+  box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 2px 10px rgba(51,41,31,.06);
+  font-family: var(--pixel);
+  font-size: 9px; letter-spacing: 1px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+.topbar .cat { width: 18px; height: 18px; }
+.topbar .ref { margin-left: auto; opacity: .8; }
+.topbar .bar { display: inline-flex; height: 9px; width: 78px; border-radius: 2px; overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(51,41,31,.12); }
+.topbar .bar i { flex: 1; }
+
+/* ===== Bandeau arc-en-ciel réutilisable ===== */
+.stripe { display: grid; grid-template-columns: repeat(6, 1fr); overflow: hidden; }
+.stripe i { display: block; }
+.stripe .c1 { background: var(--rb-terre); }
+.stripe .c2 { background: var(--rb-moutarde); }
+.stripe .c3 { background: var(--rb-olive); }
+.stripe .c4 { background: var(--rb-lagon); }
+.stripe .c5 { background: var(--rb-prune); }
+.stripe .c6 { background: var(--rb-encre); }
+
+/* ===== Layout ===== */
+.wrap { max-width: 1140px; margin: 0 auto; padding: 0 32px 140px; }
+section { margin-top: 92px; }
+
+/* reveal */
+.reveal { opacity: 0; transform: translateY(16px); animation: rise .8s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+
+/* ===== Hero brochure ===== */
+.hero { padding-top: 72px; text-align: center; }
+.hero .logo { width: 96px; height: 96px; margin: 0 auto 22px; display: block;
+  filter: drop-shadow(0 6px 10px rgba(51,41,31,.20)); }
+.hero .kicker {
+  font-family: var(--pixel); font-size: 11px; letter-spacing: 5px;
+  text-transform: uppercase; color: var(--rb-terre); margin-bottom: 10px;
+}
+.hero h1 {
+  font-family: var(--brand); font-weight: 500; font-style: italic;
+  font-size: clamp(64px, 12.5vw, 158px); line-height: .86; margin: 0;
+  letter-spacing: -1px; color: var(--ink);
+}
+.hero .tag {
+  font-size: clamp(20px, 2.4vw, 27px); color: var(--ink-soft);
+  font-style: italic; max-width: 22ch; margin: 18px auto 0;
+}
+
+/* grand bandeau héro généreux (le stripe Apple ][ ) */
+.hero-stripe {
+  margin: 46px auto 0; max-width: 980px;
+  height: 64px; border-radius: 8px;
+  box-shadow: var(--shadow), 0 0 0 1px rgba(51,41,31,.10);
+}
+.hero-stripe.stripe i { box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 -2px 6px rgba(0,0,0,.10); }
+
+.hero-meta {
+  margin: 22px auto 0; display: flex; gap: 30px; justify-content: center; flex-wrap: wrap;
+  font-family: var(--pixel); font-size: 9px; letter-spacing: 2px; color: var(--ink-faint);
+  text-transform: uppercase;
+}
+.hero-meta b { color: var(--rb-lagon); font-weight: 700; }
+
+/* ===== Titres de section (cartouche éditorial) ===== */
+.sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 10px; }
+.sec-num {
+  font-family: var(--pixel); font-size: 10px; color: var(--paper);
+  background: var(--rb-terre); border-radius: 4px; padding: 4px 7px 3px;
+  letter-spacing: 1px;
+}
+h2 {
+  font-family: var(--brand); font-style: italic; font-weight: 500;
+  font-size: clamp(34px, 4.6vw, 52px); margin: 0; letter-spacing: -.4px; line-height: 1;
+}
+.sec-desc { color: var(--ink-soft); max-width: 62ch; margin: 12px 0 30px; font-size: 19px; }
+.sec-desc b { color: var(--ink); font-weight: 600; }
+
+.rule { height: 3px; border: 0; margin: 0; border-radius: 2px;
+  background: linear-gradient(90deg,
+    var(--rb-terre), var(--rb-moutarde), var(--rb-olive),
+    var(--rb-lagon), var(--rb-prune), var(--rb-encre)); }
+.hairline { height: 1px; border: 0; background: var(--hair); margin: 0; }
+
+/* ===== Surfaces / encarts brochure ===== */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--hair);
+  box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, var(--shadow-soft);
+  padding: 26px 28px;
+}
+
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+
+/* ===== 01 concept — colonnes éditoriales + lettrine ===== */
+.lede { font-size: 22px; line-height: 1.5; color: var(--ink); }
+.lede .drop {
+  float: left; font-family: var(--brand); font-style: italic; font-weight: 600;
+  font-size: 92px; line-height: .72; padding: 8px 14px 0 0; color: var(--rb-terre);
+}
+.editorial { columns: 2; column-gap: 42px; margin-top: 22px; font-size: 18px; }
+.editorial p { margin: 0 0 14px; break-inside: avoid; }
+.editorial p:first-child { margin-top: 0; }
+
+.feature {
+  border-top: 2px solid var(--ink);
+  padding-top: 12px;
+}
+.feature .ic { font-family: var(--pixel); font-size: 10px; letter-spacing: 1px;
+  color: var(--rb-lagon); text-transform: uppercase; margin-bottom: 6px; display: block; }
+.feature h3 { font-family: var(--brand); font-style: italic; font-weight: 600;
+  font-size: 23px; margin: 0 0 4px; }
+.feature p { margin: 0; font-size: 16px; color: var(--ink-soft); }
+.feature .kbd { font-family: var(--mono); font-size: 13px; color: var(--rb-terre); }
+
+/* ===== Palette ===== */
+.grid-pal { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+.sw { border-radius: 9px; overflow: hidden; background: var(--card);
+  border: 1px solid var(--hair);
+  box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, var(--shadow-soft); }
+.sw .chip { height: 96px; box-shadow: inset 0 -2px 8px rgba(0,0,0,.12); }
+.sw .meta { padding: 10px 12px; }
+.sw .meta b { display: block; font-family: var(--brand); font-style: italic;
+  font-weight: 600; font-size: 16px; margin-bottom: 2px; }
+.sw .meta span { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
+
+.grid-neutral { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr));
+  gap: 14px; margin-top: 18px; }
+.grid-neutral .chip { height: 58px; }
+
+/* ===== Typographie specimen ===== */
+.type-row { display: grid; grid-template-columns: 150px 1fr; gap: 24px; align-items: baseline;
+  padding: 20px 0; border-bottom: 1px solid var(--hair); }
+.type-row:last-child { border-bottom: 0; }
+.type-label { font-family: var(--pixel); font-size: 10px; color: var(--ink); letter-spacing: 1px;
+  line-height: 1.8; text-transform: uppercase; }
+.type-label span { display: block; color: var(--ink-faint); font-size: 9px; letter-spacing: .5px; }
+.t-brand { font-family: var(--brand); }
+.t-mono  { font-family: var(--mono); }
+.t-pixel { font-family: var(--pixel); }
+
+/* ===== Composants : boutons ===== */
+.controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.btn {
+  font-family: var(--brand); font-size: 18px; color: var(--ink);
+  padding: 9px 22px; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(var(--card), var(--paper-3));
+  border: 1px solid var(--hair);
+  box-shadow: 0 1px 0 rgba(255,255,255,.7) inset, 0 3px 8px rgba(51,41,31,.12);
+  transition: transform .06s, box-shadow .06s;
+}
+.btn:active { transform: translateY(1px); box-shadow: 0 1px 3px rgba(0,0,0,.2) inset; }
+
+/* bouton par défaut : anneau arc-en-ciel maison */
+.btn-default { position: relative; padding: 10px 28px; font-weight: 600; }
+.btn-default::before {
+  content: ""; position: absolute; inset: -4px; border-radius: 999px;
+  padding: 3px; background: linear-gradient(120deg,
+    var(--rb-terre), var(--rb-moutarde), var(--rb-olive),
+    var(--rb-lagon), var(--rb-prune), var(--rb-encre));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none;
+}
+.btn-rb {
+  color: #fff; font-weight: 600; border: 0;
+  background: linear-gradient(110deg, var(--rb-terre), var(--rb-prune), var(--rb-encre));
+  text-shadow: 0 1px 0 rgba(0,0,0,.28);
+  box-shadow: 0 3px 10px rgba(51,41,31,.22);
+}
+
+.checkrow { display: flex; gap: 28px; align-items: center; margin-top: 20px; font-size: 17px; }
+.chk { width: 18px; height: 18px; display: inline-grid; place-items: center;
+  background: var(--card); border: 1px solid var(--hair); border-radius: 5px;
+  font-family: var(--pixel); font-size: 11px; color: var(--rb-lagon);
+  box-shadow: 0 1px 0 rgba(255,255,255,.7) inset; }
+.rad { width: 18px; height: 18px; border-radius: 50%;
+  background: var(--card); border: 1px solid var(--hair); position: relative;
+  box-shadow: 0 1px 0 rgba(255,255,255,.7) inset; }
+.rad.on::after { content:""; position:absolute; inset:4px; border-radius:50%; background: var(--rb-encre); }
+
+.field { display: flex; flex-direction: column; gap: 7px; max-width: 340px; margin-top: 24px; }
+.field label { font-family: var(--pixel); font-size: 9px; letter-spacing: 1px; color: var(--ink-soft);
+  text-transform: uppercase; }
+.field input { font-family: var(--mono); font-size: 14px; padding: 9px 11px; color: var(--ink);
+  background: #FFFBEE; border: 1px solid var(--hair); border-radius: 7px;
+  box-shadow: 0 1px 3px rgba(51,41,31,.10) inset; outline: none; }
+.field input:focus { border-color: var(--rb-lagon);
+  box-shadow: 0 0 0 2px rgba(63,142,140,.35), 0 1px 3px rgba(51,41,31,.10) inset; }
+
+/* ===== Petite fenêtre (mock app) ===== */
+.win { border-radius: var(--radius); overflow: hidden; background: var(--card);
+  border: 1px solid var(--hair); box-shadow: var(--shadow); }
+.titlebar {
+  height: 30px; display: flex; align-items: center; padding: 0 12px; gap: 8px;
+  background: linear-gradient(var(--paper-2), var(--paper-3));
+  border-bottom: 1px solid var(--hair); position: relative;
+}
+.dots { display: flex; gap: 6px; }
+.dots i { width: 11px; height: 11px; border-radius: 50%; display: block;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.dots .d1 { background: var(--rb-terre); }
+.dots .d2 { background: var(--rb-moutarde); }
+.dots .d3 { background: var(--rb-olive); }
+.win-title { margin: 0 auto; font-family: var(--pixel); font-size: 9px; letter-spacing: .5px;
+  color: var(--ink-soft); text-transform: uppercase; }
+.win-body { padding: 20px; background: var(--paper); }
+
+/* ===== Terminal mock ===== */
+.term { background: var(--term-bg); color: var(--term-fg); font-family: var(--mono);
+  font-size: 13.5px; line-height: 1.62; padding: 20px 22px; min-height: 264px; }
+.term .user { color: var(--rb-olive); }
+.term .path { color: var(--rb-lagon); }
+.term .pr   { color: var(--rb-prune); }
+.term .star { color: var(--rb-moutarde); }
+.term .dim  { color: var(--term-dim); }
+.term .ok   { color: var(--rb-olive); }
+.term .warn { color: var(--rb-moutarde); }
+.term .err  { color: var(--rb-terre); }
+.term b { color: var(--term-fg); }
+.term .cursor { display:inline-block; width:8px; height:15px; background: var(--rb-olive);
+  vertical-align:-2px; animation: blink 1.05s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ===== Tokens ===== */
+.tokens { font-family: var(--mono); font-size: 12.5px; line-height: 1.95;
+  background: var(--term-bg); color: var(--term-fg); padding: 24px 26px; border-radius: var(--radius);
+  overflow-x: auto; box-shadow: var(--shadow); }
+.tokens .k { color: var(--rb-moutarde); }
+.tokens .v { color: var(--rb-lagon); }
+.tokens .cm { color: var(--term-dim); font-style: italic; }
+
+/* ===== Footer ===== */
+footer { margin-top: 110px; text-align: center; color: var(--ink-soft); font-style: italic; }
+footer .stripe { max-width: 320px; height: 14px; margin: 26px auto 16px; border-radius: 4px;
+  box-shadow: var(--shadow-soft); }
+footer .sig { font-family: var(--pixel); font-style: normal; font-size: 9px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--ink-faint); margin-top: 10px; }
+
+@media (max-width: 880px) {
+  body { font-size: 17px; }
+  .cols, .cols-3 { grid-template-columns: 1fr; }
+  .editorial { columns: 1; }
+  .grid-pal { grid-template-columns: repeat(3,1fr); }
+  .type-row { grid-template-columns: 1fr; gap: 8px; }
+  .wrap { padding: 0 22px 110px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Cartouche d'en-tête -->
+<div class="topbar">
+  <svg class="cat" viewBox="0 0 100 100" aria-hidden="true">
+    <defs>
+      <linearGradient id="rbTop" gradientUnits="userSpaceOnUse" x1="0" y1="6" x2="0" y2="94">
+        <stop offset="0" stop-color="#C56B3C"/><stop offset=".1666" stop-color="#C56B3C"/>
+        <stop offset=".1666" stop-color="#E0A93B"/><stop offset=".3333" stop-color="#E0A93B"/>
+        <stop offset=".3333" stop-color="#8A9A52"/><stop offset=".5" stop-color="#8A9A52"/>
+        <stop offset=".5" stop-color="#3F8E8C"/><stop offset=".6666" stop-color="#3F8E8C"/>
+        <stop offset=".6666" stop-color="#8A5E8C"/><stop offset=".8333" stop-color="#8A5E8C"/>
+        <stop offset=".8333" stop-color="#45688F"/><stop offset="1" stop-color="#45688F"/>
+      </linearGradient>
+    </defs>
+    <path fill="url(#rbTop)" d="M16 12 L33 38 Q50 29 67 38 L84 12 L89 53 Q86 80 63 91 Q50 97 37 91 Q14 80 11 53 Q11 31 16 12 Z"/>
+  </svg>
+  <span>superkitty</span>
+  <span style="opacity:.6">Brochure produit · n&deg; 1977</span>
+  <span class="ref">
+    <span class="bar stripe"><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><i class="c5"></i><i class="c6"></i></span>
+  </span>
+</div>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero reveal" style="animation-delay:.05s">
+    <svg class="logo" viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <linearGradient id="rbBig" gradientUnits="userSpaceOnUse" x1="0" y1="6" x2="0" y2="94">
+          <stop offset="0" stop-color="#C56B3C"/><stop offset=".1666" stop-color="#C56B3C"/>
+          <stop offset=".1666" stop-color="#E0A93B"/><stop offset=".3333" stop-color="#E0A93B"/>
+          <stop offset=".3333" stop-color="#8A9A52"/><stop offset=".5" stop-color="#8A9A52"/>
+          <stop offset=".5" stop-color="#3F8E8C"/><stop offset=".6666" stop-color="#3F8E8C"/>
+          <stop offset=".6666" stop-color="#8A5E8C"/><stop offset=".8333" stop-color="#8A5E8C"/>
+          <stop offset=".8333" stop-color="#45688F"/><stop offset="1" stop-color="#45688F"/>
+        </linearGradient>
+      </defs>
+      <path fill="url(#rbBig)" d="M16 12 L33 38 Q50 29 67 38 L84 12 L89 53 Q86 80 63 91 Q50 97 37 91 Q14 80 11 53 Q11 31 16 12 Z"/>
+    </svg>
+    <div class="kicker">L'ordinateur personnel a son terminal</div>
+    <h1>superkitty</h1>
+    <p class="tag">« Six couleurs, neuf vies. » Le terminal crème qui ne perd jamais votre session.</p>
+    <div class="hero-stripe stripe">
+      <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><i class="c5"></i><i class="c6"></i>
+    </div>
+    <div class="hero-meta">
+      <span><b>macOS</b> seulement</span>
+      <span>Vrai <b>PTY</b></span>
+      <span>Dédié à <b>Claude Code</b></span>
+      <span>Sessions <b>tmux</b> persistantes</span>
+    </div>
+  </header>
+
+  <!-- 01 — Concept -->
+  <section class="reveal" style="animation-delay:.1s">
+    <div class="sec-head"><span class="sec-num">01</span><h2>L'idée</h2></div>
+    <p class="sec-desc">
+      Un véritable terminal — comme <i>kitty</i> — mais pensé d'un bout à l'autre pour de longues
+      sessions avec <b>Claude Code</b>. On garde l'élégance imprimée d'un catalogue de 1977 : papier
+      crème, encre brun-charbon, gros <b>Garamond</b> italique et un grand bandeau arc-en-ciel maison.
+    </p>
+    <div class="card">
+      <p class="lede"><span class="drop">F</span>riction-first : chaque jalon retire une douleur réelle.
+        On ne perd plus sa session quand on ferme la fenêtre, on glisse une image directement dans
+        l'invite, et tout le shell brut se range derrière une interface propre — sans rien renier de
+        la puissance d'un terminal complet.</p>
+      <div class="editorial">
+        <p>Le secret tient en un mot : <b>tmux</b>. Chaque pane est adossé à une vraie session tmux,
+          si bien que le <i>run</i> Claude vit dans le serveur, pas dans la fenêtre. Fermez : tmux
+          détache. Rouvrez avec le même identifiant : tout revient — scrollback et processus vivants.</p>
+        <p>Au-dessus, on retrouve le système de fenêtres et de panes qu'on aimait déjà : des
+          <b>layouts kitty</b> auto-équilibrés, des onglets teintés par projet, et une palette de
+          commandes pour tout piloter au clavier.</p>
+        <p>Le clin d'œil est dans le nom : <i>kitty</i> est un chat, et un chat a <b>neuf vies</b>.
+          superkitty les rend à vos sessions — fermez, rouvrez, rien n'est jamais vraiment perdu.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 — Points clés (grille brochure) -->
+  <section class="reveal" style="animation-delay:.13s">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Ce qu'il fait</h2></div>
+    <p class="sec-desc">Une page de catalogue : les gestes du quotidien, chacun avec son raccourci.</p>
+    <div class="cols-3">
+      <div class="feature">
+        <span class="ic">Persistance</span>
+        <h3>Neuf vies</h3>
+        <p>Sessions tmux qui survivent à la fermeture. Rouvrir réattache le run Claude vivant et tout le scrollback.</p>
+      </div>
+      <div class="feature">
+        <span class="ic">Mise en page</span>
+        <h3>Onglets &amp; panes</h3>
+        <p>Layouts kitty auto-équilibrés : <span class="kbd">tall · fat · grid · horizontal · vertical · stack</span>.</p>
+      </div>
+      <div class="feature">
+        <span class="ic">Images</span>
+        <h3>Glisser-déposer</h3>
+        <p>Une image tombée dans l'invite devient un bracketed-paste : Claude affiche <span class="kbd">[Image #1]</span>.</p>
+      </div>
+      <div class="feature">
+        <span class="ic">Au clavier</span>
+        <h3>Palette &amp; co.</h3>
+        <p>Palette <span class="kbd">⌘K</span>, fichiers <span class="kbd">⌘P</span>, compositeur <span class="kbd">⌘E</span>, bloc-notes <span class="kbd">⌃⇧N</span>.</p>
+      </div>
+      <div class="feature">
+        <span class="ic">Toujours là</span>
+        <h3>Sidebar &amp; Quake</h3>
+        <p>Sidebar des sessions <span class="kbd">⌘B</span>, dropdown Quake global <span class="kbd">⌃`</span> depuis n'importe quelle app.</p>
+      </div>
+      <div class="feature">
+        <span class="ic">Sérénité</span>
+        <h3>Garde-fous</h3>
+        <p>Notifications de fin d'agent, <b>sandbox</b> par pane (écriture confinée), rouvrir le dernier fermé <span class="kbd">⌘⇧T</span>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 — Palette -->
+  <section class="reveal" style="animation-delay:.16s">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Palette</h2></div>
+    <p class="sec-desc">Six teintes <b>maison</b>, chaudes et légèrement passées façon impression vintage — distinctes des hexes d'Apple. Elles servent d'accents, et de tints par onglet/projet.</p>
+    <div class="grid-pal">
+      <div class="sw"><div class="chip" style="background:var(--rb-terre)"></div><div class="meta"><b>Terre cuite</b><span>#C56B3C</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--rb-moutarde)"></div><div class="meta"><b>Moutarde</b><span>#E0A93B</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--rb-olive)"></div><div class="meta"><b>Olive</b><span>#8A9A52</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--rb-lagon)"></div><div class="meta"><b>Lagon</b><span>#3F8E8C</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--rb-prune)"></div><div class="meta"><b>Prune</b><span>#8A5E8C</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--rb-encre)"></div><div class="meta"><b>Encre bleue</b><span>#45688F</span></div></div>
+    </div>
+    <div class="grid-neutral">
+      <div class="sw"><div class="chip" style="background:var(--paper)"></div><div class="meta"><b>Papier</b><span>#F3ECD7</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--paper-3)"></div><div class="meta"><b>Crème −</b><span>#E6DAB9</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--hair)"></div><div class="meta"><b>Filet</b><span>#C9B894</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--ink)"></div><div class="meta"><b>Encre</b><span>#33291F</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--term-bg)"></div><div class="meta"><b>Terminal</b><span>#211C15</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--term-fg)"></div><div class="meta"><b>Texte term.</b><span>#EFE6CF</span></div></div>
+    </div>
+  </section>
+
+  <!-- 04 — Typographie -->
+  <section class="reveal" style="animation-delay:.19s">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Typographie</h2></div>
+    <p class="sec-desc">Trois voix : <b>Garamond</b> italique pour la marque et les titres (le cachet imprimé), <b>Monaco</b> pour le code et le terminal, et un pixel-font « Chicago » réservé aux <i>micro</i>-étiquettes d'interface.</p>
+    <div class="card">
+      <div class="type-row">
+        <div class="type-label">Marque / titres<span>EB Garamond · italic</span></div>
+        <div class="t-brand" style="font-style:italic;font-size:46px;line-height:1.04">Un terminal crème<br>aux six couleurs.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">Corps<span>EB Garamond · regular</span></div>
+        <div class="t-brand" style="font-size:19px">Closing the window never kills your session — tmux keeps it alive, and reopening reattaches the live Claude run, scrollback and all.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">Terminal / code<span>Monaco · regular</span></div>
+        <div class="t-mono" style="font-size:15px">superkitty ~ % claude --resume<br>const id = "superkitty-p1"; // tmux session</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">UI / étiquettes<span>Silkscreen · « Chicago »</span></div>
+        <div class="t-pixel" style="font-size:13px">FICHIER · ÉDITION · FENÊTRE · ⌘K PALETTE</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 — Composants -->
+  <section class="reveal" style="animation-delay:.22s">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Composants</h2></div>
+    <p class="sec-desc">Surfaces crème relevées, boutons en pastille, et l'anneau arc-en-ciel maison pour l'action par défaut — le tout en pur CSS, douces ombres portées, pas de biseau 3D dur.</p>
+    <div class="cols">
+      <div class="card">
+        <div class="controls">
+          <button class="btn btn-default">Ouvrir</button>
+          <button class="btn">Annuler</button>
+          <button class="btn btn-rb">Nouvelle session</button>
+        </div>
+        <div class="checkrow">
+          <span><span class="chk">✓</span> Sandbox</span>
+          <span><span class="rad on"></span> tmux</span>
+          <span><span class="rad"></span> raw</span>
+        </div>
+        <div class="field">
+          <label>Nom de session</label>
+          <input type="text" value="superkitty-p1" spellcheck="false" />
+        </div>
+        <hr class="hairline" style="margin:24px 0 18px" />
+        <hr class="rule" />
+      </div>
+
+      <div class="win">
+        <div class="titlebar">
+          <span class="dots"><i class="d1"></i><i class="d2"></i><i class="d3"></i></span>
+          <span class="win-title">À propos de superkitty</span>
+        </div>
+        <div class="win-body">
+          <p style="margin:0 0 14px;font-size:18px">Une fenêtre épurée : trois pastilles aux teintes maison,
+            coins arrondis, ombre douce. Pas de chrome bruyant — l'écran reste à la session.</p>
+          <div class="stripe" style="height:18px;border-radius:5px;box-shadow:var(--shadow-soft)">
+            <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><i class="c5"></i><i class="c6"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 — Terminal -->
+  <section class="reveal" style="animation-delay:.25s">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Le terminal</h2></div>
+    <p class="sec-desc">Le cœur du produit : fond charbon chaud, texte crème, accents ANSI mappés sur l'arc-en-ciel maison. Lisible des heures durant.</p>
+    <div class="win">
+      <div class="titlebar">
+        <span class="dots"><i class="d1"></i><i class="d2"></i><i class="d3"></i></span>
+        <span class="win-title">superkitty — ~/Dev/superkitty — claude</span>
+      </div>
+      <div class="term">
+        <div><span class="user">lucas@superkitty</span> <span class="path">~/Dev/superkitty</span> <span class="pr">%</span> claude</div>
+        <div>&nbsp;</div>
+        <div><span class="star">✻</span> Welcome to <b>Claude Code</b></div>
+        <div class="dim">&nbsp;&nbsp;/help for help · cwd: ~/Dev/superkitty</div>
+        <div>&nbsp;</div>
+        <div><span class="ok">●</span> Lecture de <span class="path">src/App.tsx</span> <span class="dim">(412 lignes)</span></div>
+        <div><span class="warn">●</span> Édition de <span class="path">src/themes.ts</span> <span class="dim">+1 thème « 1977 »</span></div>
+        <div><span class="ok">✓</span> Type-check OK · <span class="dim">0 erreur</span></div>
+        <div class="dim">&nbsp;&nbsp;[Image #1] capturée → bracketed-paste</div>
+        <div>&nbsp;</div>
+        <div><span class="pr">%</span> <span class="cursor"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 — Tokens -->
+  <section class="reveal" style="animation-delay:.28s">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Design tokens</h2></div>
+    <p class="sec-desc">Prêts à coller dans <span class="t-mono">App.css</span> (variables CSS du chrome) et <span class="t-mono">themes.ts</span> (thème xterm « 1977 »).</p>
+    <div class="tokens">
+<span class="cm">/* App.css — chrome brochure 1977 */</span><br>
+<span class="k">--rb-terre</span>: <span class="v">#C56B3C</span>;  <span class="k">--rb-moutarde</span>: <span class="v">#E0A93B</span>;  <span class="k">--rb-olive</span>: <span class="v">#8A9A52</span>;<br>
+<span class="k">--rb-lagon</span>: <span class="v">#3F8E8C</span>;  <span class="k">--rb-prune</span>:    <span class="v">#8A5E8C</span>;  <span class="k">--rb-encre</span>: <span class="v">#45688F</span>;<br>
+<span class="k">--paper</span>: <span class="v">#F3ECD7</span>;  <span class="k">--ink</span>: <span class="v">#33291F</span>;  <span class="k">--hair</span>: <span class="v">#C9B894</span>;<br>
+<br>
+<span class="cm">// themes.ts — thème xterm « 1977 »</span><br>
+{ <span class="k">name</span>: <span class="v">"1977"</span>, <span class="k">background</span>: <span class="v">"#211C15"</span>, <span class="k">foreground</span>: <span class="v">"#EFE6CF"</span>,<br>
+&nbsp;&nbsp;<span class="k">cursor</span>: <span class="v">"#8A9A52"</span>, <span class="k">green</span>: <span class="v">"#8A9A52"</span>, <span class="k">yellow</span>: <span class="v">"#E0A93B"</span>,<br>
+&nbsp;&nbsp;<span class="k">red</span>: <span class="v">"#C56B3C"</span>, <span class="k">cyan</span>: <span class="v">"#3F8E8C"</span>, <span class="k">magenta</span>: <span class="v">"#8A5E8C"</span>, <span class="k">blue</span>: <span class="v">"#45688F"</span> }
+    </div>
+  </section>
+
+  <footer class="reveal" style="animation-delay:.31s">
+    <div class="stripe">
+      <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><i class="c5"></i><i class="c6"></i>
+    </div>
+    <p>superkitty · charte « brochure 1977 » · proposition à valider</p>
+    <p class="sig">Friction-first · macOS · dédié à Claude Code</p>
+  </footer>
+
+</div>
+</body>
+</html>

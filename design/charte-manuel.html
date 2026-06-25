@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>superkitty — Manuel & Charte Graphique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ——— design tokens ——— */
+    --paper:        #f4f1ea;
+    --paper-2:      #ece7dc;
+    --paper-edge:   #e3ddcf;
+    --ink:          #1a1714;
+    --ink-soft:     #4a443c;
+    --ink-faint:    #8a8275;
+    --accent:       #d8552f;   /* orange brûlé rétro */
+    --accent-deep:  #a83c1c;
+    --hair:         #c8c0b0;
+    --hair-strong:  #b3a994;
+
+    --grid-max:     1180px;
+    --gut:          clamp(20px, 4vw, 56px);
+
+    --font-sans:    'Space Grotesk', system-ui, sans-serif;
+    --font-mono:    'Space Mono', ui-monospace, monospace;
+
+    --ratio-1: 0.75rem;
+    --ratio-2: 0.875rem;
+    --ratio-3: 1rem;
+    --ratio-4: 1.5rem;
+    --ratio-5: 2.25rem;
+    --ratio-6: clamp(2.5rem, 7vw, 5.5rem);
+    --ratio-7: clamp(4rem, 16vw, 13rem);
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    font-weight:400;
+    line-height:1.5;
+    font-size:16px;
+    /* fine paper grain */
+    background-image:
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.012) 0 1px, transparent 1px 3px);
+  }
+  ::selection{ background:var(--accent); color:var(--paper); }
+
+  a{ color:inherit; text-decoration:none; }
+
+  /* ——— layout helpers ——— */
+  .wrap{ max-width:var(--grid-max); margin:0 auto; padding:0 var(--gut); }
+  .rule{ border:none; border-top:1px solid var(--ink); height:0; }
+  .hair{ border:none; border-top:1px solid var(--hair); height:0; }
+  .hair-strong{ border:none; border-top:1px solid var(--hair-strong); height:0; }
+
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:var(--ratio-1);
+    letter-spacing:0.28em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+  }
+  .accent{ color:var(--accent); }
+
+  /* section scaffold */
+  section{ padding:clamp(56px,9vw,120px) 0; }
+  .sec-head{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:14px;
+    margin-bottom:clamp(36px,6vw,72px);
+  }
+  .sec-num{
+    font-family:var(--font-mono);
+    font-size:var(--ratio-2);
+    letter-spacing:0.2em;
+    color:var(--accent);
+  }
+  .sec-title{
+    font-weight:600;
+    font-size:var(--ratio-5);
+    line-height:1.02;
+    letter-spacing:-0.02em;
+  }
+  .sec-kicker{
+    max-width:46ch;
+    color:var(--ink-soft);
+    font-size:var(--ratio-3);
+  }
+
+  /* —————————————————————————————— top strip / running header */
+  .topbar{
+    position:sticky; top:0; z-index:50;
+    background:rgba(244,241,234,0.86);
+    backdrop-filter:blur(8px) saturate(120%);
+    border-bottom:1px solid var(--ink);
+  }
+  .topbar .wrap{
+    display:flex; align-items:center; justify-content:space-between;
+    height:46px;
+    font-family:var(--font-mono);
+    font-size:11px; letter-spacing:0.18em; text-transform:uppercase;
+  }
+  .topbar .dot{
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:var(--accent); margin-right:9px; vertical-align:middle;
+  }
+  .topbar nav{ display:flex; gap:22px; color:var(--ink-faint); }
+  .topbar nav a:hover{ color:var(--ink); }
+  @media (max-width:740px){ .topbar nav{ display:none; } }
+
+  /* —————————————————————————————— COVER */
+  .cover{ padding-top:clamp(48px,8vw,96px); padding-bottom:0; }
+  .cover-meta{
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:16px;
+    font-family:var(--font-mono);
+    font-size:11px; letter-spacing:0.22em; text-transform:uppercase;
+    color:var(--ink-faint);
+    padding-bottom:20px;
+  }
+  .cover-title{
+    font-weight:700;
+    font-size:var(--ratio-7);
+    line-height:0.82;
+    letter-spacing:-0.04em;
+    text-transform:lowercase;
+    margin:clamp(20px,5vw,48px) 0 0;
+  }
+  .cover-title .super{ color:var(--ink); }
+  .cover-title .kitty{ color:var(--accent); }
+  .cover-sub{
+    display:grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap:var(--gut);
+    align-items:end;
+    margin-top:clamp(28px,5vw,52px);
+    padding-bottom:clamp(28px,5vw,44px);
+  }
+  .cover-sub h2{
+    font-weight:400;
+    font-size:var(--ratio-4);
+    line-height:1.18;
+    letter-spacing:-0.01em;
+    max-width:24ch;
+  }
+  .cover-sub .caption{
+    font-size:var(--ratio-2);
+    color:var(--ink-soft);
+    line-height:1.55;
+    max-width:34ch;
+  }
+  .cover-sub .caption .lbl{
+    font-family:var(--font-mono); font-size:10px; letter-spacing:0.2em;
+    text-transform:uppercase; color:var(--accent); display:block; margin-bottom:8px;
+  }
+  @media (max-width:740px){ .cover-sub{ grid-template-columns:1fr; } }
+
+  .cover-strip{
+    display:flex; flex-wrap:wrap; gap:0;
+    border-top:1px solid var(--ink);
+    border-bottom:1px solid var(--ink);
+    font-family:var(--font-mono);
+    font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
+  }
+  .cover-strip span{
+    padding:14px 22px 14px 0;
+    margin-right:22px;
+    color:var(--ink-soft);
+    border-right:1px solid var(--hair);
+  }
+  .cover-strip span:last-child{ border-right:none; }
+  .cover-strip b{ color:var(--ink); font-weight:700; }
+
+  /* —————————————————————————————— TABLE OF CONTENTS */
+  .toc{ display:grid; gap:0; }
+  .toc-row{
+    display:grid;
+    grid-template-columns: 88px 1fr auto;
+    align-items:baseline;
+    gap:24px;
+    padding:22px 0;
+    border-top:1px solid var(--hair);
+    transition:color .15s, padding-left .2s;
+  }
+  .toc-row:last-child{ border-bottom:1px solid var(--hair); }
+  .toc-row:hover{ color:var(--accent); padding-left:10px; }
+  .toc-row .n{ font-family:var(--font-mono); font-size:var(--ratio-3); color:var(--accent); }
+  .toc-row .t{ font-size:var(--ratio-4); font-weight:500; letter-spacing:-0.01em; }
+  .toc-row .p{ font-family:var(--font-mono); font-size:var(--ratio-2); color:var(--ink-faint); }
+  @media (max-width:560px){ .toc-row{ grid-template-columns:48px 1fr; } .toc-row .p{ display:none; } }
+
+  /* —————————————————————————————— PRINCIPE / friction-first */
+  .principle-grid{
+    display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0;
+    border-top:1px solid var(--ink);
+  }
+  .principle-grid .lede{
+    grid-column:1 / -1;
+    font-size:var(--ratio-4);
+    font-weight:400;
+    line-height:1.3;
+    letter-spacing:-0.01em;
+    max-width:30ch;
+    padding:40px 0 56px;
+  }
+  .principle-grid .lede b{ font-weight:600; }
+  .friction{
+    border-top:1px solid var(--hair);
+    border-left:1px solid var(--hair);
+    padding:28px 24px 36px;
+  }
+  .friction:nth-child(3n+2){ } /* leave grid lines */
+  .friction .fn{ font-family:var(--font-mono); font-size:var(--ratio-2); color:var(--accent); letter-spacing:0.12em; }
+  .friction h3{ font-size:var(--ratio-3); font-weight:600; margin:14px 0 8px; letter-spacing:-0.01em; }
+  .friction p{ font-size:var(--ratio-2); color:var(--ink-soft); line-height:1.5; }
+  @media (max-width:820px){ .principle-grid{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:520px){ .principle-grid{ grid-template-columns:1fr; } .friction{ border-left:none; } }
+
+  /* —————————————————————————————— PALETTE */
+  .swatches{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:1px;
+    background:var(--hair);
+    border:1px solid var(--hair);
+  }
+  .sw{ background:var(--paper); padding:0; }
+  .sw .chip{ height:148px; border-bottom:1px solid var(--hair); }
+  .sw .meta{ padding:16px 16px 22px; }
+  .sw .meta .name{ font-weight:600; font-size:var(--ratio-2); }
+  .sw .meta .role{ font-size:11px; color:var(--ink-faint); margin-top:2px; }
+  .sw .meta .hex{ font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); margin-top:12px; letter-spacing:0.04em; }
+  @media (max-width:820px){ .swatches{ grid-template-columns:repeat(2,1fr); } }
+
+  .palette-note{
+    display:grid; grid-template-columns:1fr 1fr; gap:var(--gut);
+    margin-top:36px; align-items:start;
+  }
+  .palette-note p{ font-size:var(--ratio-2); color:var(--ink-soft); max-width:42ch; }
+  .palette-note .accent-fiche{
+    border:1px solid var(--ink);
+    padding:0;
+  }
+  .palette-note .accent-fiche .band{ height:64px; background:var(--accent); }
+  .palette-note .accent-fiche .rows{ font-family:var(--font-mono); font-size:11px; }
+  .palette-note .accent-fiche .rows div{
+    display:flex; justify-content:space-between;
+    padding:10px 16px; border-top:1px solid var(--hair);
+    letter-spacing:0.04em;
+  }
+  .palette-note .accent-fiche .rows .k{ color:var(--ink-faint); text-transform:uppercase; }
+  @media (max-width:660px){ .palette-note{ grid-template-columns:1fr; } }
+
+  /* —————————————————————————————— TYPOGRAPHIE specimen */
+  .specimen-row{
+    display:grid; grid-template-columns: 120px 1fr; gap:24px;
+    align-items:baseline;
+    padding:26px 0; border-top:1px solid var(--hair);
+  }
+  .specimen-row:last-child{ border-bottom:1px solid var(--hair); }
+  .specimen-row .lab{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); letter-spacing:0.1em; line-height:1.5; }
+  .specimen-row .lab b{ color:var(--ink); display:block; font-size:13px; letter-spacing:0; }
+  .specimen-row .sp{ letter-spacing:-0.02em; line-height:1; }
+  .sp-display{ font-size:clamp(2.4rem,7vw,4.6rem); font-weight:700; }
+  .sp-h1{ font-size:clamp(1.9rem,4.5vw,3rem); font-weight:600; }
+  .sp-h2{ font-size:clamp(1.4rem,3vw,2rem); font-weight:500; }
+  .sp-body{ font-size:1.0625rem; font-weight:400; line-height:1.55 !important; letter-spacing:0 !important; max-width:54ch; color:var(--ink-soft); }
+  .sp-mono{ font-family:var(--font-mono); font-size:1rem; letter-spacing:0 !important; }
+  .sp-caps{ font-family:var(--font-mono); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.28em !important; color:var(--accent); }
+
+  .charset{
+    margin-top:48px;
+    border:1px solid var(--ink);
+    padding:clamp(20px,4vw,40px);
+  }
+  .charset .big{
+    font-size:clamp(1.3rem,4vw,2.4rem); font-weight:500; letter-spacing:-0.01em;
+    line-height:1.25; word-spacing:0.1em;
+  }
+  .charset .small{ font-family:var(--font-mono); font-size:13px; color:var(--ink-faint); margin-top:18px; letter-spacing:0.04em; }
+
+  /* —————————————————————————————— COMPONENTS */
+  .comp-grid{ display:grid; grid-template-columns:1fr 1fr; gap:var(--gut); }
+  @media (max-width:760px){ .comp-grid{ grid-template-columns:1fr; } }
+  .comp-card{ border:1px solid var(--hair); padding:28px; background:var(--paper); }
+  .comp-card .cap{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:22px; }
+  .comp-card .cap .num{ color:var(--accent); }
+
+  .btn{
+    font-family:var(--font-sans); font-weight:500; font-size:14px;
+    padding:11px 20px; border:1px solid var(--ink); background:transparent; color:var(--ink);
+    cursor:pointer; letter-spacing:0.01em; transition:.15s;
+  }
+  .btn:hover{ background:var(--ink); color:var(--paper); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--paper); }
+  .btn.primary:hover{ background:var(--accent-deep); border-color:var(--accent-deep); }
+  .btn.ghost{ border-color:var(--hair-strong); color:var(--ink-soft); }
+  .btn.ghost:hover{ background:var(--paper-2); color:var(--ink); }
+  .btn-row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+
+  .field{
+    width:100%; font-family:var(--font-mono); font-size:13px;
+    padding:12px 14px; background:var(--paper-2); border:1px solid var(--hair-strong);
+    color:var(--ink); outline:none;
+  }
+  .field:focus{ border-color:var(--accent); background:var(--paper); }
+  .field::placeholder{ color:var(--ink-faint); }
+  .field-label{ display:block; font-family:var(--font-mono); font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 8px; }
+
+  .kbd{
+    font-family:var(--font-mono); font-size:12px; font-weight:700;
+    border:1px solid var(--ink); border-bottom-width:2px; border-radius:4px;
+    padding:3px 8px; background:var(--paper); color:var(--ink);
+    display:inline-block; line-height:1;
+  }
+  .kbd-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .kbd-list{ display:grid; gap:0; }
+  .kbd-list .kl{ display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-top:1px solid var(--hair); font-size:13px; color:var(--ink-soft); }
+
+  /* mac window mock */
+  .macwin{
+    border:1px solid var(--ink); background:#fbf9f4;
+    box-shadow:6px 6px 0 rgba(26,23,20,0.08);
+  }
+  .macwin .bar{
+    display:flex; align-items:center; gap:8px;
+    padding:11px 14px; border-bottom:1px solid var(--hair-strong);
+    background:var(--paper-2);
+  }
+  .macwin .lights{ display:flex; gap:7px; }
+  .macwin .lights i{ width:11px; height:11px; border-radius:50%; border:1px solid rgba(0,0,0,0.18); }
+  .macwin .lights .r{ background:#e0654b; }
+  .macwin .lights .y{ background:#e6b94e; }
+  .macwin .lights .g{ background:#7fb46a; }
+  .macwin .bar .title{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); letter-spacing:0.1em; margin-left:6px; }
+  .macwin .bar .tab{
+    margin-left:auto; font-family:var(--font-mono); font-size:11px;
+    border:1px solid var(--accent); color:var(--accent); padding:3px 9px; border-radius:3px;
+  }
+  .macwin .body{ display:flex; min-height:170px; }
+  .macwin .side{ width:120px; border-right:1px solid var(--hair); padding:12px 10px; font-family:var(--font-mono); font-size:10px; color:var(--ink-faint); }
+  .macwin .side .s{ padding:6px 6px; border-radius:3px; margin-bottom:2px; }
+  .macwin .side .s.on{ background:var(--accent); color:var(--paper); }
+  .macwin .side .s .dotg{ display:inline-block; width:5px; height:5px; border-radius:50%; background:#7fb46a; margin-right:6px; }
+  .macwin .term{ flex:1; padding:16px 18px; font-family:var(--font-mono); font-size:12px; line-height:1.7; color:var(--ink); }
+  .macwin .term .pr{ color:var(--accent); }
+  .macwin .term .mut{ color:var(--ink-faint); }
+  .macwin .term .img{ background:var(--paper-2); border:1px solid var(--hair-strong); padding:1px 7px; border-radius:3px; }
+
+  /* —————————————————————————————— SCHEMAS */
+  .schema{ border:1px solid var(--ink); background:var(--paper); }
+  .schema-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:16px 22px; border-bottom:1px solid var(--ink);
+    font-family:var(--font-mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+  }
+  .schema-head .id{ color:var(--accent); }
+  .schema-head .meta{ color:var(--ink-faint); }
+  .schema-body{ padding:clamp(22px,4vw,44px); }
+  .schema svg{ width:100%; height:auto; display:block; }
+  .schema-caption{ font-size:var(--ratio-2); color:var(--ink-soft); max-width:60ch; margin-top:20px; line-height:1.55; }
+  .schema-caption b{ color:var(--ink); font-weight:600; }
+
+  .svg-ink{ stroke:var(--ink); }
+  .svg-fill{ fill:var(--ink); }
+  text.t-mono{ font-family:'Space Mono', monospace; }
+  text.t-sans{ font-family:'Space Grotesk', sans-serif; }
+
+  /* layouts board */
+  .layouts{
+    display:grid; grid-template-columns:repeat(6,1fr); gap:1px;
+    background:var(--hair); border:1px solid var(--hair);
+  }
+  @media (max-width:820px){ .layouts{ grid-template-columns:repeat(3,1fr); } }
+  @media (max-width:480px){ .layouts{ grid-template-columns:repeat(2,1fr); } }
+  .lay{ background:var(--paper); padding:18px 16px 20px; }
+  .lay .frame{
+    aspect-ratio:1.25/1; border:1px solid var(--ink); position:relative; margin-bottom:14px;
+    background:var(--paper-2);
+  }
+  .lay .frame i{ position:absolute; border:1px solid var(--ink); background:var(--paper); }
+  .lay .frame i.f{ background:var(--accent); border-color:var(--accent); }
+  .lay .name{ font-family:var(--font-mono); font-size:12px; font-weight:700; letter-spacing:0.02em; }
+  .lay .desc{ font-size:11px; color:var(--ink-faint); margin-top:3px; line-height:1.4; }
+  .lay .idx{ font-family:var(--font-mono); font-size:10px; color:var(--accent); float:right; }
+
+  /* —————————————————————————————— TOKENS */
+  .tokens{
+    border:1px solid var(--ink); background:var(--ink); color:var(--paper);
+    font-family:var(--font-mono); font-size:13px; line-height:1.9;
+    overflow-x:auto;
+  }
+  .tokens .th{ padding:14px 22px; border-bottom:1px solid #383229; color:var(--paper-edge); letter-spacing:0.14em; font-size:11px; text-transform:uppercase; }
+  .tokens pre{ padding:24px 22px; }
+  .tokens .cm{ color:#8a8275; }
+  .tokens .vr{ color:#e8a07a; }
+  .tokens .vl{ color:var(--paper); }
+  .tokens .sel{ color:#bcd39a; }
+
+  /* —————————————————————————————— FOOTER / colophon */
+  .colophon{ border-top:1px solid var(--ink); padding-top:clamp(40px,7vw,80px); }
+  .colophon-grid{
+    display:grid; grid-template-columns: 2fr 1fr 1fr; gap:var(--gut);
+  }
+  @media (max-width:760px){ .colophon-grid{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:480px){ .colophon-grid{ grid-template-columns:1fr; } }
+  .colophon h4{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:16px; }
+  .colophon p{ font-size:var(--ratio-2); color:var(--ink-soft); line-height:1.6; max-width:42ch; }
+  .colophon .big-mark{
+    font-weight:700; font-size:clamp(3rem,12vw,8rem); line-height:0.8;
+    letter-spacing:-0.04em; text-transform:lowercase; margin:clamp(36px,7vw,72px) 0 18px;
+  }
+  .colophon .big-mark .kitty{ color:var(--accent); }
+  .foot-meta{
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--ink-faint);
+    padding:24px 0 64px; border-top:1px solid var(--hair);
+  }
+
+  .lives{ display:inline-flex; gap:4px; }
+  .lives b{ color:var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- ============ RUNNING HEADER ============ -->
+<header class="topbar">
+  <div class="wrap">
+    <div><span class="dot"></span>superkitty / manuel</div>
+    <nav>
+      <a href="#principe">Principe</a>
+      <a href="#palette">Palette</a>
+      <a href="#typographie">Typo</a>
+      <a href="#composants">Composants</a>
+      <a href="#schemas">Schémas</a>
+      <a href="#tokens">Tokens</a>
+    </nav>
+    <div>Éd. 01 — 2026</div>
+  </div>
+</header>
+
+<!-- ============ COVER ============ -->
+<section class="cover" id="haut">
+  <div class="wrap">
+    <div class="cover-meta">
+      <span>Charte graphique &amp; manuel produit</span>
+      <span>macOS · Tauri · tmux</span>
+      <span>Document 00 / Système</span>
+    </div>
+    <hr class="rule">
+
+    <h1 class="cover-title"><span class="super">super</span><span class="kitty">kitty</span></h1>
+
+    <div class="cover-sub">
+      <h2>Un vrai terminal pour macOS, taillé pour vivre avec <span class="accent">Claude&nbsp;Code</span>.</h2>
+      <div class="caption">
+        <span class="lbl">Note de l'éditeur</span>
+        Comme kitty — un PTY complet qui fait tourner n'importe quel programme — mais débarrassé des frictions du quotidien avec un agent. Less, but better.
+      </div>
+    </div>
+
+    <div class="cover-strip">
+      <span><b>01</b> Sessions persistantes</span>
+      <span><b>02</b> Onglets &amp; panes</span>
+      <span><b>03</b> Drag &amp; drop d'images</span>
+      <span><b>04</b> Palette de commandes</span>
+      <span><b>∞</b> Neuf vies</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SOMMAIRE ============ -->
+<section id="sommaire">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">00 — Sommaire</div>
+      <h2 class="sec-title">Table des matières</h2>
+    </div>
+    <div class="toc">
+      <a class="toc-row" href="#principe"><span class="n">01</span><span class="t">Principe — friction-first</span><span class="p">p.01</span></a>
+      <a class="toc-row" href="#palette"><span class="n">02</span><span class="t">Palette &amp; encres</span><span class="p">p.02</span></a>
+      <a class="toc-row" href="#typographie"><span class="n">03</span><span class="t">Typographie &amp; échelle</span><span class="p">p.03</span></a>
+      <a class="toc-row" href="#composants"><span class="n">04</span><span class="t">Composants &amp; fenêtre</span><span class="p">p.04</span></a>
+      <a class="toc-row" href="#schemas"><span class="n">05</span><span class="t">Schémas techniques</span><span class="p">p.05</span></a>
+      <a class="toc-row" href="#layouts"><span class="n">06</span><span class="t">Planche des layouts</span><span class="p">p.06</span></a>
+      <a class="toc-row" href="#tokens"><span class="n">07</span><span class="t">Design tokens</span><span class="p">p.07</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 01 PRINCIPE ============ -->
+<section id="principe">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">01 — Principe</div>
+      <h2 class="sec-title">Friction-first</h2>
+      <p class="sec-kicker">Chaque jalon supprime une douleur précise rencontrée en utilisant Claude dans un terminal nu. On ne décore pas : on retire ce qui gêne.</p>
+    </div>
+
+    <div class="principle-grid">
+      <p class="lede">« Un vrai terminal comme kitty, mais qui ne perd jamais une session Claude et n'oblige plus à vivre dans du shell brut. » Quatre frictions, supprimées <b>une par une</b>.</p>
+
+      <div class="friction">
+        <div class="fn">01 — Persistence</div>
+        <h3>La session survit à la fermeture</h3>
+        <p>Chaque pane est adossé à tmux. Fermer la fenêtre détache, ne tue jamais. Rouvrir réattache le run Claude vivant et tout le scrollback.</p>
+      </div>
+      <div class="friction">
+        <div class="fn">02 — Images</div>
+        <h3>Drag &amp; drop sans détour</h3>
+        <p>On dépose une image dans un pane : son chemin est injecté en bracketed-paste. Claude affiche <span class="sp-mono" style="font-size:11px">[Image&nbsp;#1]</span> et travaille.</p>
+      </div>
+      <div class="friction">
+        <div class="fn">03 — UI</div>
+        <h3>Une interface, pas du shell brut</h3>
+        <p>Palette <span class="kbd">⌘K</span>, sélecteur de fichiers, compositeur, bloc-notes, notifications de fin d'agent. Tout reste sobre, rien n'est superflu.</p>
+      </div>
+      <div class="friction">
+        <div class="fn">04 — Fenêtres</div>
+        <h3>Le système de panes conservé</h3>
+        <p>Ce qu'on aimait dans kitty reste : onglets, panes, layouts auto-équilibrés. On garde le bon, on corrige le reste.</p>
+      </div>
+      <div class="friction">
+        <div class="fn">05 — Garde-fou</div>
+        <h3>Sandbox par pane</h3>
+        <p>Un pane peut confiner les écritures au dossier projet (profil Seatbelt). Les lectures restent ouvertes : node, git et claude continuent de fonctionner.</p>
+      </div>
+      <div class="friction">
+        <div class="fn">06 — Retour</div>
+        <h3>Rouvrir, toujours</h3>
+        <p>Un pane détaché ou un onglet fermé se rouvre avec <span class="kbd">⌘⇧T</span> : la session vivante revient, ou se recrée à l'identique. Neuf vies.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 PALETTE ============ -->
+<section id="palette">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">02 — Couleurs</div>
+      <h2 class="sec-title">Palette &amp; encres</h2>
+      <p class="sec-kicker">Un papier, une encre, un seul accent. L'orange brûlé ne sert qu'à pointer : actif, alerte, marqueur. Tout le reste respire en valeurs de gris chaud.</p>
+    </div>
+
+    <div class="swatches">
+      <div class="sw">
+        <div class="chip" style="background:var(--paper)"></div>
+        <div class="meta"><div class="name">Papier</div><div class="role">Fond principal</div><div class="hex">#F4F1EA · paper</div></div>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:var(--paper-2)"></div>
+        <div class="meta"><div class="name">Papier 2</div><div class="role">Surfaces, champs</div><div class="hex">#ECE7DC · paper-2</div></div>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:var(--ink)"></div>
+        <div class="meta"><div class="name">Encre</div><div class="role">Texte, filets forts</div><div class="hex">#1A1714 · ink</div></div>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:var(--accent)"></div>
+        <div class="meta"><div class="name">Accent</div><div class="role">Orange brûlé · pointeur</div><div class="hex">#D8552F · accent</div></div>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:var(--ink-soft)"></div>
+        <div class="meta"><div class="name">Encre douce</div><div class="role">Texte secondaire</div><div class="hex">#4A443C · ink-soft</div></div>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:var(--ink-faint)"></div>
+        <div class="meta"><div class="name">Encre pâle</div><div class="role">Légendes, méta</div><div class="hex">#8A8275 · ink-faint</div></div>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:var(--hair-strong)"></div>
+        <div class="meta"><div class="name">Filet</div><div class="role">Hairline, grille</div><div class="hex">#B3A994 · hair</div></div>
+      </div>
+      <div class="sw">
+        <div class="chip" style="background:var(--accent-deep)"></div>
+        <div class="meta"><div class="name">Accent profond</div><div class="role">Survol, pressé</div><div class="hex">#A83C1C · accent-deep</div></div>
+      </div>
+    </div>
+
+    <div class="palette-note">
+      <p>L'orange est un <b>signal</b>, pas un décor. Règle d'usage : un écran ne porte qu'un seul aplat d'accent visible à la fois. Le contraste encre-sur-papier reste l'ossature ; l'accent guide l'œil vers ce qui change — le pane actif, l'onglet courant, le marqueur de prompt, l'alerte de fin d'agent.</p>
+      <div class="accent-fiche">
+        <div class="band"></div>
+        <div class="rows">
+          <div><span class="k">Réf.</span><span>SK / Accent 600</span></div>
+          <div><span class="k">Hex</span><span>#D8552F</span></div>
+          <div><span class="k">RGB</span><span>216 · 85 · 47</span></div>
+          <div><span class="k">Usage</span><span>≤ 8 % surface</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 TYPOGRAPHIE ============ -->
+<section id="typographie">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">03 — Typographie</div>
+      <h2 class="sec-title">Voix &amp; échelle</h2>
+      <p class="sec-kicker">Une grotesque pour parler — Space Grotesk, serrée et confiante — et une monospace pour le code et les données techniques — Space Mono. Rien d'autre.</p>
+    </div>
+
+    <div class="specimen-row">
+      <div class="lab"><b>Display</b>Space Grotesk · 700<br>tracking −0.02em</div>
+      <div class="sp sp-display">Neuf&nbsp;vies, zéro&nbsp;perte.</div>
+    </div>
+    <div class="specimen-row">
+      <div class="lab"><b>Titre H1</b>Space Grotesk · 600</div>
+      <div class="sp sp-h1">La session vit dans tmux</div>
+    </div>
+    <div class="specimen-row">
+      <div class="lab"><b>Titre H2</b>Space Grotesk · 500</div>
+      <div class="sp sp-h2">Layouts auto-équilibrés</div>
+    </div>
+    <div class="specimen-row">
+      <div class="lab"><b>Corps</b>Space Grotesk · 400</div>
+      <div class="sp sp-body">Fermer la fenêtre détache simplement le PTY ; les processus, y compris un <em>claude</em> en cours, restent vivants dans le serveur tmux. Rouvrir avec le même identifiant réattache la session et restaure le scrollback.</div>
+    </div>
+    <div class="specimen-row">
+      <div class="lab"><b>Mono</b>Space Mono · 400</div>
+      <div class="sp sp-mono">tmux new-session -A -D -s superkitty-&lt;id&gt;</div>
+    </div>
+    <div class="specimen-row">
+      <div class="lab"><b>Capitale</b>Space Mono · 0.28em</div>
+      <div class="sp sp-caps">01 — Persistence · friction-first</div>
+    </div>
+
+    <div class="charset">
+      <div class="big">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 — ⌘ ⌃ ⇧ ⌥ ↵ &amp; @ # / [ ]</div>
+      <div class="small">Space Grotesk + Space Mono · chiffres tabulaires pour les fiches techniques · symboles modificateurs macOS conservés tels quels</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 COMPOSANTS ============ -->
+<section id="composants">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">04 — Composants</div>
+      <h2 class="sec-title">Pièces du système</h2>
+      <p class="sec-kicker">Des éléments minimaux, bordés d'un filet, sans ombre inutile. La fenêtre Mac est le composant maître : tout y prend place.</p>
+    </div>
+
+    <div class="comp-grid" style="margin-bottom:var(--gut)">
+      <div class="comp-card">
+        <div class="cap"><span class="num">04.1</span> — Boutons</div>
+        <div class="btn-row">
+          <button class="btn primary">Nouveau pane</button>
+          <button class="btn">Réattacher</button>
+          <button class="btn ghost">Détacher</button>
+        </div>
+        <div class="btn-row" style="margin-top:16px">
+          <button class="btn ghost">Sandbox</button>
+          <button class="btn ghost">Tuer la session</button>
+        </div>
+      </div>
+
+      <div class="comp-card">
+        <div class="cap"><span class="num">04.2</span> — Champs</div>
+        <label class="field-label">Chercher une commande</label>
+        <input class="field" type="text" placeholder="⌘K  ›  basculer le layout, ouvrir une session…">
+        <label class="field-label" style="margin-top:18px">Composer un prompt</label>
+        <input class="field" type="text" placeholder="⌘E  ›  texte multi-ligne → pane focalisé">
+      </div>
+    </div>
+
+    <div class="comp-grid">
+      <div class="comp-card">
+        <div class="cap"><span class="num">04.3</span> — Raccourcis</div>
+        <div class="kbd-row" style="margin-bottom:6px">
+          <span class="kbd">⌘K</span><span class="kbd">⌘P</span><span class="kbd">⌘E</span><span class="kbd">⌘B</span><span class="kbd">⌃⇧N</span><span class="kbd">⌃`</span><span class="kbd">⌘⇧T</span>
+        </div>
+        <div class="kbd-list">
+          <div class="kl"><span>Palette de commandes</span><span class="kbd">⌘K</span></div>
+          <div class="kl"><span>Sélecteur de fichiers</span><span class="kbd">⌘P</span></div>
+          <div class="kl"><span>Sidebar des sessions</span><span class="kbd">⌘B</span></div>
+          <div class="kl"><span>Dropdown Quake global</span><span class="kbd">⌃`</span></div>
+          <div class="kl"><span>Rouvrir pane / onglet</span><span class="kbd">⌘⇧T</span></div>
+        </div>
+      </div>
+
+      <div class="comp-card" style="padding:0;border-color:var(--hair)">
+        <div class="cap" style="padding:28px 28px 0"><span class="num">04.4</span> — Fenêtre superkitty</div>
+        <div style="padding:18px 28px 28px">
+          <div class="macwin">
+            <div class="bar">
+              <div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+              <span class="title">superkitty — ~/dev/projet</span>
+              <span class="tab">tall ▦</span>
+            </div>
+            <div class="body">
+              <div class="side">
+                <div class="s on"><span class="dotg" style="background:#fff"></span>superkitty-p1</div>
+                <div class="s"><span class="dotg"></span>superkitty-p2</div>
+                <div class="s"><span class="dotg"></span>build</div>
+                <div class="s" style="opacity:.5">— externe —</div>
+              </div>
+              <div class="term">
+                <div><span class="pr">›</span> claude <span class="mut">--resume</span></div>
+                <div class="mut">réattaché · scrollback restauré</div>
+                <div><span class="img">[Image #1]</span> capture.png</div>
+                <div><span class="pr">›</span> <span style="border-right:2px solid var(--accent);padding-right:1px">&nbsp;</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 SCHEMAS ============ -->
+<section id="schemas">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">05 — Schémas</div>
+      <h2 class="sec-title">Vues techniques</h2>
+      <p class="sec-kicker">Trois planches façon fiche d'atelier : la fenêtre éclatée et cotée, le flux PTY ↔ tmux, et la mécanique de persistence à la fermeture.</p>
+    </div>
+
+    <!-- SCHEMA A : vue éclatée -->
+    <div class="schema" style="margin-bottom:var(--gut)">
+      <div class="schema-head">
+        <span class="id">Fig. A — Vue éclatée</span>
+        <span class="meta">Anatomie de la fenêtre · échelle libre</span>
+      </div>
+      <div class="schema-body">
+        <svg viewBox="0 0 900 360" role="img" aria-label="Vue éclatée de la fenêtre superkitty">
+          <!-- dimension top -->
+          <line x1="70" y1="40" x2="830" y2="40" class="svg-ink" stroke-width="1"/>
+          <line x1="70" y1="34" x2="70" y2="46" class="svg-ink" stroke-width="1"/>
+          <line x1="830" y1="34" x2="830" y2="46" class="svg-ink" stroke-width="1"/>
+          <text class="t-mono" x="450" y="32" text-anchor="middle" font-size="11" fill="#8a8275">fenêtre — largeur</text>
+
+          <!-- window outline -->
+          <rect x="70" y="60" width="760" height="260" fill="none" class="svg-ink" stroke-width="1.5"/>
+
+          <!-- titlebar -->
+          <rect x="70" y="60" width="760" height="34" fill="#ece7dc" class="svg-ink" stroke-width="1"/>
+          <circle cx="92" cy="77" r="5" fill="#d8552f"/>
+          <circle cx="110" cy="77" r="5" fill="none" class="svg-ink" stroke-width="1"/>
+          <circle cx="128" cy="77" r="5" fill="none" class="svg-ink" stroke-width="1"/>
+          <text class="t-mono" x="430" y="81" text-anchor="middle" font-size="11" fill="#4a443c">titlebar · overlay + traffic lights</text>
+
+          <!-- sidebar -->
+          <rect x="70" y="94" width="140" height="226" fill="#f4f1ea" class="svg-ink" stroke-width="1"/>
+          <line x1="90" y1="120" x2="190" y2="120" class="svg-ink" stroke-width="1"/>
+          <line x1="90" y1="140" x2="190" y2="140" stroke="#b3a994" stroke-width="1"/>
+          <line x1="90" y1="160" x2="170" y2="160" stroke="#b3a994" stroke-width="1"/>
+
+          <!-- panes -->
+          <rect x="210" y="94" width="380" height="226" fill="none" stroke="#d8552f" stroke-width="2"/>
+          <rect x="590" y="94" width="240" height="113" fill="none" class="svg-ink" stroke-width="1"/>
+          <rect x="590" y="207" width="240" height="113" fill="none" class="svg-ink" stroke-width="1"/>
+
+          <!-- annotation leaders -->
+          <g stroke-width="1">
+            <line x1="70" y1="77" x2="20" y2="77" class="svg-ink"/>
+            <circle cx="20" cy="77" r="2.5" class="svg-fill"/>
+            <line x1="140" y1="200" x2="140" y2="345" class="svg-ink"/>
+            <circle cx="140" cy="345" r="2.5" class="svg-fill"/>
+            <line x1="400" y1="207" x2="400" y2="345" stroke="#d8552f"/>
+            <circle cx="400" cy="345" r="2.5" fill="#d8552f"/>
+            <line x1="710" y1="263" x2="880" y2="263" class="svg-ink" transform="translate(-50,0)"/>
+            <circle cx="850" cy="263" r="2.5" class="svg-fill"/>
+          </g>
+
+          <text class="t-mono" x="12" y="74" text-anchor="end" font-size="10" fill="#4a443c">①</text>
+          <text class="t-mono" x="100" y="358" text-anchor="middle" font-size="10" fill="#4a443c">② sidebar ⌘B</text>
+          <text class="t-mono" x="400" y="358" text-anchor="middle" font-size="10" fill="#d8552f">③ pane actif</text>
+          <text class="t-mono" x="852" y="266" text-anchor="start" font-size="10" fill="#4a443c">④ panes empilés</text>
+        </svg>
+        <p class="schema-caption"><b>① titlebar overlay</b> — réserve l'espace des feux macOS. <b>② sidebar ⌘B</b> — liste les sessions tmux, point attaché / détaché. <b>③ pane actif</b> — bordure accent, prend le focus clavier. <b>④</b> — chaque rectangle est un pane indépendant, recalculé à chaque ajout pour rester équilibré.</p>
+      </div>
+    </div>
+
+    <!-- SCHEMA B : flux PTY tmux -->
+    <div class="schema" style="margin-bottom:var(--gut)">
+      <div class="schema-head">
+        <span class="id">Fig. B — Flux PTY ↔ tmux</span>
+        <span class="meta">Le cœur du dispositif · create-vs-reattach</span>
+      </div>
+      <div class="schema-body">
+        <svg viewBox="0 0 900 300" role="img" aria-label="Flux entre l'interface, le PTY et le serveur tmux">
+          <!-- UI box -->
+          <rect x="40" y="110" width="170" height="80" fill="#ece7dc" class="svg-ink" stroke-width="1.5"/>
+          <text class="t-sans" x="125" y="145" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1714">xterm.js</text>
+          <text class="t-mono" x="125" y="165" text-anchor="middle" font-size="10" fill="#8a8275">pane / UI</text>
+
+          <!-- PTY box -->
+          <rect x="365" y="110" width="170" height="80" fill="#f4f1ea" class="svg-ink" stroke-width="1.5"/>
+          <text class="t-sans" x="450" y="145" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1714">PTY</text>
+          <text class="t-mono" x="450" y="165" text-anchor="middle" font-size="10" fill="#8a8275">portable-pty</text>
+
+          <!-- tmux box -->
+          <rect x="690" y="80" width="170" height="140" fill="#1a1714" stroke="#1a1714" stroke-width="1.5"/>
+          <text class="t-sans" x="775" y="120" text-anchor="middle" font-size="15" font-weight="600" fill="#f4f1ea">tmux server</text>
+          <text class="t-mono" x="775" y="142" text-anchor="middle" font-size="10" fill="#b3a994">superkitty-&lt;id&gt;</text>
+          <rect x="712" y="158" width="126" height="40" fill="none" stroke="#d8552f" stroke-width="1.5"/>
+          <text class="t-mono" x="775" y="183" text-anchor="middle" font-size="11" fill="#d8552f">claude (vivant)</text>
+
+          <!-- arrows -->
+          <g stroke-width="1.5" class="svg-ink">
+            <line x1="210" y1="140" x2="358" y2="140"/>
+            <polygon points="358,140 348,135 348,145" class="svg-fill"/>
+            <line x1="210" y1="160" x2="358" y2="160" stroke="#8a8275"/>
+            <polygon points="210,160 220,155 220,165" fill="#8a8275"/>
+
+            <line x1="535" y1="150" x2="683" y2="150"/>
+            <polygon points="683,150 673,145 673,155" class="svg-fill"/>
+          </g>
+          <text class="t-mono" x="284" y="133" text-anchor="middle" font-size="9" fill="#4a443c">pty_write →</text>
+          <text class="t-mono" x="284" y="176" text-anchor="middle" font-size="9" fill="#8a8275">← pty://output</text>
+          <text class="t-mono" x="609" y="143" text-anchor="middle" font-size="9" fill="#4a443c">attach -A</text>
+
+          <!-- detach note -->
+          <line x1="450" y1="190" x2="450" y2="248" stroke="#d8552f" stroke-width="1" stroke-dasharray="4 3"/>
+          <text class="t-mono" x="450" y="266" text-anchor="middle" font-size="10" fill="#d8552f">fermeture ⇒ pty_detach — tmux n'est pas tué</text>
+        </svg>
+        <p class="schema-caption">Chaque pane lance <span class="sp-mono" style="font-size:11px">tmux new-session -A -D</span> : <b>création</b> au premier appel (shell de login frais), <b>réattache</b> ensuite. Les processus vivent dans le serveur tmux, pas dans le PTY — c'est tout le truc.</p>
+      </div>
+    </div>
+
+    <!-- SCHEMA C : persistence timeline -->
+    <div class="schema">
+      <div class="schema-head">
+        <span class="id">Fig. C — Cycle de vie</span>
+        <span class="meta">La fenêtre se ferme, la session vit</span>
+      </div>
+      <div class="schema-body">
+        <svg viewBox="0 0 900 200" role="img" aria-label="Ligne de temps de la persistence d'une session">
+          <line x1="60" y1="120" x2="840" y2="120" class="svg-ink" stroke-width="1.5"/>
+          <!-- ticks -->
+          <g class="svg-ink" stroke-width="1.5">
+            <line x1="120" y1="112" x2="120" y2="128"/>
+            <line x1="350" y1="112" x2="350" y2="128"/>
+            <line x1="560" y1="112" x2="560" y2="128"/>
+            <line x1="780" y1="112" x2="780" y2="128"/>
+          </g>
+          <!-- session lifeline (always alive) -->
+          <rect x="120" y="64" width="660" height="6" fill="#d8552f"/>
+          <text class="t-mono" x="450" y="56" text-anchor="middle" font-size="10" fill="#d8552f">session tmux — vivante en continu</text>
+
+          <!-- window presence -->
+          <rect x="120" y="160" width="230" height="6" fill="#1a1714"/>
+          <rect x="560" y="160" width="220" height="6" fill="#1a1714"/>
+          <line x1="350" y1="163" x2="560" y2="163" stroke="#8a8275" stroke-width="1" stroke-dasharray="4 3"/>
+          <text class="t-mono" x="455" y="184" text-anchor="middle" font-size="10" fill="#8a8275">fenêtre fermée</text>
+
+          <!-- labels on timeline -->
+          <text class="t-mono" x="120" y="146" text-anchor="middle" font-size="9" fill="#4a443c">spawn</text>
+          <text class="t-mono" x="350" y="146" text-anchor="middle" font-size="9" fill="#4a443c">detach</text>
+          <text class="t-mono" x="560" y="146" text-anchor="middle" font-size="9" fill="#4a443c">réattache</text>
+          <text class="t-mono" x="780" y="146" text-anchor="middle" font-size="9" fill="#4a443c">⌘⇧T</text>
+        </svg>
+        <p class="schema-caption">La ligne <span class="accent">accent</span> ne s'interrompt jamais : tant que tmux tourne, la session reste. La fenêtre (encre) peut disparaître et revenir — au pire, <span class="kbd">⌘⇧T</span> la rappelle. C'est la garantie « neuf vies ».</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 LAYOUTS ============ -->
+<section id="layouts">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">06 — Layouts</div>
+      <h2 class="sec-title">Planche des arrangements</h2>
+      <p class="sec-kicker">Six layouts portés de kitty. À chaque ajout ou fermeture, tous les rectangles sont recalculés — l'arrangement reste équilibré, rien ne s'empile par accident.</p>
+    </div>
+
+    <div class="layouts">
+      <div class="lay">
+        <span class="idx">01</span>
+        <div class="frame">
+          <i class="f" style="left:5%;top:5%;width:52%;height:90%"></i>
+          <i style="left:62%;top:5%;width:33%;height:42%"></i>
+          <i style="left:62%;top:53%;width:33%;height:42%"></i>
+        </div>
+        <div class="name">tall</div>
+        <div class="desc">main à gauche, reste empilé · défaut</div>
+      </div>
+      <div class="lay">
+        <span class="idx">02</span>
+        <div class="frame">
+          <i class="f" style="left:5%;top:5%;width:90%;height:52%"></i>
+          <i style="left:5%;top:62%;width:42%;height:33%"></i>
+          <i style="left:53%;top:62%;width:42%;height:33%"></i>
+        </div>
+        <div class="name">fat</div>
+        <div class="desc">main en haut, reste sous lui</div>
+      </div>
+      <div class="lay">
+        <span class="idx">03</span>
+        <div class="frame">
+          <i class="f" style="left:5%;top:5%;width:42%;height:42%"></i>
+          <i style="left:53%;top:5%;width:42%;height:42%"></i>
+          <i style="left:5%;top:53%;width:42%;height:42%"></i>
+          <i style="left:53%;top:53%;width:42%;height:42%"></i>
+        </div>
+        <div class="name">grid</div>
+        <div class="desc">grille équilibrée n×n</div>
+      </div>
+      <div class="lay">
+        <span class="idx">04</span>
+        <div class="frame">
+          <i class="f" style="left:5%;top:5%;width:28%;height:90%"></i>
+          <i style="left:36%;top:5%;width:28%;height:90%"></i>
+          <i style="left:67%;top:5%;width:28%;height:90%"></i>
+        </div>
+        <div class="name">horizontal</div>
+        <div class="desc">colonnes côte à côte</div>
+      </div>
+      <div class="lay">
+        <span class="idx">05</span>
+        <div class="frame">
+          <i class="f" style="left:5%;top:5%;width:90%;height:28%"></i>
+          <i style="left:5%;top:36%;width:90%;height:28%"></i>
+          <i style="left:5%;top:67%;width:90%;height:28%"></i>
+        </div>
+        <div class="name">vertical</div>
+        <div class="desc">lignes empilées</div>
+      </div>
+      <div class="lay">
+        <span class="idx">06</span>
+        <div class="frame">
+          <i style="left:11%;top:14%;width:80%;height:74%"></i>
+          <i style="left:8%;top:10%;width:80%;height:74%"></i>
+          <i class="f" style="left:5%;top:6%;width:80%;height:74%"></i>
+        </div>
+        <div class="name">stack</div>
+        <div class="desc">une seule visible · zoom ⌃⇧Z</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 07 TOKENS ============ -->
+<section id="tokens">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-num">07 — Tokens</div>
+      <h2 class="sec-title">Design tokens</h2>
+      <p class="sec-kicker">Le système tient en quelques variables CSS. Une seule source de vérité : encres, accent, filets, échelle typographique, gouttière.</p>
+    </div>
+
+    <div class="tokens">
+      <div class="th">superkitty.tokens.css</div>
+<pre><span class="sel">:root</span> {
+  <span class="cm">/* — encres & papier — */</span>
+  <span class="vr">--paper</span>:       <span class="vl">#f4f1ea</span>;
+  <span class="vr">--paper-2</span>:     <span class="vl">#ece7dc</span>;
+  <span class="vr">--ink</span>:         <span class="vl">#1a1714</span>;
+  <span class="vr">--ink-soft</span>:    <span class="vl">#4a443c</span>;
+  <span class="vr">--ink-faint</span>:   <span class="vl">#8a8275</span>;
+
+  <span class="cm">/* — accent unique — */</span>
+  <span class="vr">--accent</span>:      <span class="vl">#d8552f</span>;  <span class="cm">/* orange brûlé */</span>
+  <span class="vr">--accent-deep</span>: <span class="vl">#a83c1c</span>;
+
+  <span class="cm">/* — filets & grille — */</span>
+  <span class="vr">--hair</span>:        <span class="vl">#c8c0b0</span>;
+  <span class="vr">--hair-strong</span>: <span class="vl">#b3a994</span>;
+  <span class="vr">--grid-max</span>:    <span class="vl">1180px</span>;
+  <span class="vr">--gut</span>:         <span class="vl">clamp(20px, 4vw, 56px)</span>;
+
+  <span class="cm">/* — typographie — */</span>
+  <span class="vr">--font-sans</span>:   <span class="vl">'Space Grotesk', sans-serif</span>;
+  <span class="vr">--font-mono</span>:   <span class="vl">'Space Mono', monospace</span>;
+  <span class="vr">--ratio-4</span>:     <span class="vl">1.5rem</span>;
+  <span class="vr">--ratio-6</span>:     <span class="vl">clamp(2.5rem, 7vw, 5.5rem)</span>;
+  <span class="vr">--ratio-7</span>:     <span class="vl">clamp(4rem, 16vw, 13rem)</span>;
+}</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COLOPHON ============ -->
+<section class="colophon" id="colophon">
+  <div class="wrap">
+    <div class="colophon-grid">
+      <div>
+        <h4>À propos</h4>
+        <p>superkitty est un émulateur de terminal macOS dédié à Claude Code : un vrai PTY adossé à tmux, pensé « friction-first ». Construit avec Tauri 2, React + TypeScript et xterm.js côté interface, Rust côté backend.</p>
+      </div>
+      <div>
+        <h4>Système</h4>
+        <p>Charte « Manuel ».<br>Space Grotesk + Space Mono.<br>Accent orange brûlé #D8552F.<br>Grille 12 col. · filets 1px.</p>
+      </div>
+      <div>
+        <h4>Pour mémoire</h4>
+        <p>kitty = chat.<br>superkitty = neuf vies.<br>Less, but better.</p>
+      </div>
+    </div>
+
+    <div class="big-mark"><span>super</span><span class="kitty">kitty</span></div>
+
+    <div class="foot-meta">
+      <span>Manuel &amp; charte graphique — Éd. 01</span>
+      <span class="lives">Neuf vies <b>● ● ● ● ● ● ● ● ●</b></span>
+      <span>macOS · 2026 · Document système</span>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

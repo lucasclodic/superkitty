@@ -7,89 +7,113 @@ Légende : `[ ]` à faire · `[~]` en cours · `[x]` fait
 
 ---
 
+## ✅ Livré dans cette session (récap)
+
+Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout compile : `tsc`, `cargo check`, `vite build`) :
+
+- **#9 Zoom de pane** (`⌃⇧Z` / `⌘⇧↵`, façon `toggle_layout stack`) + bouton ⛶ par pane.
+- **Scroll kitty + #14 promote-to-main** : `⌃⇧↑/↓` ligne, `⌃⇧PgUp/PgDn`, `⌃⇧Home/End`, `⌥⌘↑/↓` prompt-à-prompt ; `` ⌃⇧` ``/`⌘⇧M` promote ; `⌃⇧F/B` move-in-list.
+- **#10 Numéros d'onglet** + tooltip `⌘N`.
+- **#1 Rouvrir le dernier fermé** (`⌘⇧T`, historique persisté, pane **et** onglet).
+- **#12 Palette de commandes** (`⌘K`, fuzzy, + sessions tmux).
+- **#11 Menu clic droit** (réutilise la palette).
+- **#3 Settings** (`⌘,`, thèmes xterm live, police, toggle notifs, cheat-sheet).
+- **#6 Notifications fin d'agent** (BEL → badge onglet/pane + notif macOS `osascript`).
+- **#7 Nouveau pane = login shell frais** (`$SHELL -l`, ignoré au réattach).
+- **#15 Picker de fichiers** (`⌘P`, `git ls-files`) + drag de tout fichier.
+- **#4 Coller image** (`⌘V` → sauve dans `~/.superkitty/dropped/` → injecte).
+- **#17 Renommer onglets** (double-clic) + **teinte auto par projet** (hash du cwd).
+- **#20 Scratchpad par onglet** (`⌃⇧N`, persisté, envoi au pane).
+- **#16 Composeur multi-lignes** (`⌘E`, `⌘↵` envoie, paste image inline).
+- **#19 Mode Quake** (hotkey global `` ⌃` ``, dropdown choix-projet + prompt).
+- **#5 Sandbox par pane** (Seatbelt write-confinement, badge 🔒).
+
+À affiner plus tard : confinement *lecture* du sandbox, vraie fenêtre Quake redimensionnée descendant du haut, picker `@` déclenché à la frappe, resizers draggables, sortie compressée (#8).
+
+---
+
 ## 1. Rouvrir une fenêtre/onglet fermé (façon Chrome ⌘⇧T)
 
 > Quand je ferme un onglet ou un pane par erreur, je veux pouvoir le rouvrir.
 
-- [ ] Garder une pile des sessions récemment fermées (id tmux, layout, titre).
-- [ ] Raccourci `⌘⇧T` pour rouvrir la dernière fermée (et dépiler à chaque appel).
-- [ ] Décider du comportement avec tmux :
-  - `pty_detach` (close « doux ») → la session tmux vit encore, on peut juste réattacher.
-  - `pty_kill` (⌘W / ⌃⇧W) → la session est détruite ; « rouvrir » = recréer un pane neuf.
-- [ ] Idéal : transformer ⌘W en *detach* + entrée dans l'historique, plutôt qu'un kill sec.
-- [ ] Persister cet historique dans `localStorage` pour survivre à un restart de l'app.
-- [ ] **Clic droit** (sur la barre d'onglets / un pane) → menu contextuel avec « Rouvrir l'onglet fermé » / « Rouvrir la fenêtre fermée », en plus du raccourci `⌘⇧T`.
+- [x] Garder une pile des sessions récemment fermées (id tmux, layout, titre) → `AppState.closed`.
+- [x] Raccourci `⌘⇧T` pour rouvrir la dernière fermée (et dépiler à chaque appel).
+- [x] Décider du comportement avec tmux :
+  - `pty_detach` (close « doux ») → la session tmux vit encore, on réattache (`⌃⇧W`/`⌘⇧D`).
+  - `pty_kill` (⌘W) → la session est détruite ; « rouvrir » = recréer le pane/onglet frais au bon cwd.
+- [~] Idéal : transformer ⌘W en *detach*. (⌘W reste un kill avec confirmation, mais l'onglet fermé entre **quand même** dans l'historique → « rouvrir » recrée frais ; `⌃⇧W` détache déjà.)
+- [x] Persister cet historique dans `localStorage` pour survivre à un restart de l'app.
+- [x] **Clic droit** → menu contextuel avec « Rouvrir le dernier fermé », en plus du raccourci `⌘⇧T`.
 
 ## 2. Ouvrir / lister les sessions tmux
 
 > Pouvoir voir et rattacher les sessions tmux qui tournent déjà.
 
-- [ ] Commande backend pour lister les sessions tmux (`tmux list-sessions`).
-- [ ] UI (sidebar ou palette) listant les sessions `superkitty-*` + leur état (attaché/détaché).
-- [ ] Cliquer une session → l'ouvrir dans un nouveau pane/onglet (réattache par `id`).
-- [ ] Pouvoir ouvrir une session tmux « brute » (pas forcément créée par superkitty ?).
-- [ ] Bouton pour tuer une session depuis la liste.
-- [ ] (relié à M4 « session sidebar » du roadmap)
+- [x] Commande backend pour lister les sessions tmux (`tmux_list_sessions` → `tmux list-sessions`, nom/attaché/fenêtres/dates).
+- [x] UI (sidebar `⌘B`) listant les sessions `superkitty-*` **et** externes + leur état (point accent = attaché, « ouverte ici »).
+- [x] Cliquer une session → l'ouvrir dans un nouveau pane du tab actif (réattache par `id` ; si déjà ouverte → focus).
+- [x] Pouvoir ouvrir une session tmux « brute » (non préfixée) : pane neuf mappé sur son nom (`AppState.sessions`, persisté).
+- [x] Bouton pour tuer une session depuis la liste (🗑 → `tmux_kill_session`, retire le pane si ouvert).
+- [x] (relié à M4 « session sidebar » du roadmap)
 
 ## 3. Settings (thème, raccourcis, etc.)
 
 > Un panneau de réglages pour changer vite l'apparence et les shortcuts.
 
-- [ ] Panneau Settings (modale ou onglet dédié), ouvrable via `⌘,`.
-- [ ] **Thèmes** : choisir un thème xterm (couleurs, fond, curseur), preview en direct.
-  - [ ] Quelques thèmes intégrés (dark, light, solarized…).
-  - [ ] Police + taille de police.
-- [ ] **Raccourcis** : voir et remapper les shortcuts (tabs, panes, splits).
-- [ ] Persister les settings dans `localStorage` (ou un fichier de config).
-- [ ] Appliquer à chaud sans redémarrer (tous les panes xterm se mettent à jour).
+- [x] Panneau Settings (modale), ouvrable via `⌘,`.
+- [x] **Thèmes** : choisir un thème xterm (couleurs, fond, curseur), preview en direct.
+  - [x] Quelques thèmes intégrés (Superkitty, Tokyo Night, Solarized Dark/Light, GitHub Light).
+  - [x] Police + taille de police.
+- [~] **Raccourcis** : voir (cheat-sheet dans Settings) ✓ ; remapper pas encore.
+- [x] Persister les settings dans `localStorage` (`superkitty.settings.v1`).
+- [x] Appliquer à chaud sans redémarrer (props `theme/font` → `term.options`, sans recréer le terminal).
 
 ## 4. Drag & drop de screenshots dans le chat (= M2 du roadmap)
 
 > Déposer une image → son chemin est injecté dans le pane focus (Claude lit les chemins d'images).
 
 - [x] Zone de drop sur le pane focus (overlay visuel pendant le drag).
-- [ ] Sauver l'image déposée dans un dossier (ex : `~/.superkitty/dropped/` ou tmp).
+- [x] Sauver l'image dans un dossier (`~/.superkitty/dropped/`) — pour les images **collées** (`⌘V`) ; un fichier déposé garde son chemin d'origine (déjà stable).
 - [x] Injecter le chemin du fichier dans le PTY focus (`pty_write`) — en **bracketed paste** (`ESC[200~ … ESC[201~`) pour que Claude affiche `[Image #1]` comme un vrai terminal.
-- [ ] Gérer le coller (`⌘V`) d'une image depuis le presse-papier, pas juste le drop.
+- [x] Gérer le coller (`⌘V`) d'une image depuis le presse-papier (event `paste` → `save_image` → injection).
 - [x] Gérer plusieurs images d'un coup.
 
 ## 5. Sandbox : restreindre Claude au dossier courant
 
 > Lancer Claude dans un bac à sable où il ne voit que le dossier de travail, pas tout le reste du Mac.
 
-- [ ] Option par pane/session : « sandboxé » → Claude ne peut lire/écrire que dans `cwd` (et sous-dossiers).
-- [ ] Choisir le mécanisme de confinement :
-  - [ ] `sandbox-exec` (Seatbelt macOS) avec un profil qui n'autorise que le dossier courant.
-  - [ ] Lancer dans un conteneur / VM légère (plus lourd, plus étanche).
-  - [ ] S'appuyer sur les permissions natives de Claude Code (allowlist de chemins) — plus simple mais moins « dur ».
-- [ ] UI : indicateur visuel quand un pane est sandboxé (badge / couleur de bordure).
-- [ ] Choisir le dossier racine du sandbox au moment de créer le pane.
-- [ ] Garder l'accès aux binaires système (node, git, claude…) tout en bloquant la lecture du `$HOME` et des autres projets.
-- [ ] Bien gérer tmux : la session tourne dans le sandbox dès le `tmux new-session`.
+- [x] Option par pane : « sandboxé » → **écriture** confinée au `cwd` (lecture laissée libre pour ne pas casser les outils).
+- [~] Choisir le mécanisme de confinement :
+  - [x] `sandbox-exec` (Seatbelt macOS) avec un profil write-confinement du dossier courant.
+  - [ ] Conteneur / VM légère (non retenu).
+  - [ ] Permissions natives de Claude Code (non retenu).
+- [x] UI : badge 🔒 quand un pane est sandboxé.
+- [x] Choisir le dossier racine : le `cwd` hérité au moment de créer le pane.
+- [~] Garder l'accès aux binaires système (node, git, claude…) — fait pour l'**écriture** ; bloquer la **lecture** du `$HOME` reste à faire (fragile, casse la config/cache de Claude).
+- [x] Bien gérer tmux : le sandbox enveloppe le shell dès le `tmux new-session` → tout l'arbre (claude inclus) hérite.
 
 ## 6. Notifications quand un agent a terminé
 
 > Quand Claude finit de bosser dans un pane que je ne regarde pas, je veux être prévenu.
 
-- [ ] Détecter la fin d'un run d'agent dans un pane (Claude attend une entrée / a fini sa tâche).
-  - [ ] Piste : guetter la cloche du terminal (`BEL` / `\a`) que Claude Code émet déjà.
-  - [ ] Piste : détecter le retour au prompt / l'inactivité de sortie après une rafale.
-- [ ] Notification système macOS (titre = onglet/pane, clic → focus ce pane).
-- [ ] Badge visuel sur l'onglet/pane concerné quand il n'est pas focus.
-- [ ] Ne notifier que pour les panes non-actifs (pas celui que je regarde).
-- [ ] Réglage : son on/off, notifications on/off (à mettre dans les Settings, idée 3).
+- [x] Détecter la fin d'un run d'agent dans un pane.
+  - [x] Piste : guetter la cloche du terminal (`BEL` 0x07) → octet détecté dans le thread lecteur → event `pty://bell/<id>`.
+  - [ ] Piste : détecter le retour au prompt / l'inactivité (non nécessaire, le BEL suffit).
+- [x] Notification système macOS (via `osascript`).
+- [x] Badge visuel (point pulsant) sur l'onglet/pane concerné quand il n'est pas focus.
+- [x] Ne notifier que pour les panes non-actifs (pas celui que je regarde + fenêtre focus).
+- [~] Réglage notifications on/off (fait, dans Settings) ; son on/off pas encore.
 
 ## 7. Nouveau shell = shell frais (comme kitty)
 
 > Quand j'ouvre un nouveau window/pane, ça doit lancer un shell propre qui recharge tout
 > l'environnement (PATH, aliases, `.zshrc`…), pas hériter d'un état figé.
 
-- [ ] Un nouveau pane = nouvelle session tmux neuve qui lance un **login shell** (`zsh -l`).
-- [ ] Repartir du `cwd` voulu (dossier du projet) et d'un env rechargé à chaque ouverture.
-- [ ] ⚠️ Tension avec la persistance tmux : *réattacher* une session reprend l'état d'avant ;
-      *créer* un nouveau pane doit, lui, démarrer frais. Bien distinguer les deux chemins.
-- [ ] Vérifier le PATH dans un bundle lancé depuis le Finder (cf. *Gotchas* du CLAUDE.md :
-      env minimal → tmux/binaries introuvables). Un login shell aide ici.
+- [x] Un nouveau pane = session tmux neuve qui lance un **login shell** (`exec $SHELL -l`).
+- [x] Repartir du `cwd` voulu (dossier du projet, hérité) et d'un env rechargé à chaque ouverture.
+- [x] ⚠️ Tension avec la persistance tmux : *réattacher* reprend l'état d'avant ; *créer* démarre frais.
+      Bien distingué — tmux ignore la commande de création sur un `-A` (réattach).
+- [~] Vérifier le PATH dans un bundle lancé depuis le Finder (le login shell aide ; à valider sur un build).
 - [ ] Option « repartir de zéro » pour un pane existant (relancer un shell propre sans changer d'id ?).
 
 ## 8. Économiser les tokens en compressant les outputs
@@ -137,38 +161,38 @@ Légende : `[ ]` à faire · `[~]` en cours · `[x]` fait
 > Sur chaque pane, un petit bouton pour changer sa taille en un clic — par ex. passer
 > la fenêtre en plein écran (maximisée dans l'onglet) et re-cliquer pour revenir.
 
-- [ ] Petit bouton dans le coin de chaque pane (apparaît au survol ?) pour basculer sa taille.
-- [ ] Clic → la fenêtre passe en plein écran (occupe tout l'onglet), re-clic → retour au layout normal.
-  - [ ] Réutiliser le layout `stack` / un mode « zoom » (façon tmux `zoom-pane`) plutôt qu'un vrai recalcul.
-  - [ ] Mémoriser le layout précédent pour pouvoir revenir exactement à l'état d'avant.
-- [ ] Raccourci clavier équivalent (kitty/tmux ont un « zoom » de pane, ex. `⌃⇧Z`).
-- [ ] Éventuellement d'autres boutons de taille (cycler les layouts depuis le pane, agrandir/réduire).
-- [ ] Indicateur visuel quand un pane est « zoomé » (les autres sont cachés).
+- [x] Petit bouton ⛶ dans le pane (visible au survol) pour basculer sa taille.
+- [x] Clic → la fenêtre passe en plein écran (occupe tout l'onglet), re-clic → retour au layout normal.
+  - [x] Réutiliser le layout `stack` (le flag `zoomed` force `stack` sans toucher le layout réel).
+  - [x] Mémoriser le layout précédent → revenir exactement à l'état d'avant (layout réel jamais modifié → restauration exacte, lossless).
+- [x] Raccourci clavier équivalent : `⌃⇧Z` (kitty `toggle_layout stack`) et `⌘⇧↵`.
+- [ ] Éventuellement d'autres boutons de taille (cycler les layouts depuis le pane).
+- [x] Indicateur visuel quand un pane est « zoomé » (le bouton ⛶ devient 🗗 ; les autres panes sont cachés).
 
 ## 10. Afficher les raccourcis de navigation des onglets (⌘1…⌘9)
 
 > On peut déjà sauter à l'onglet N avec `⌘1`…`⌘9`, mais rien ne le montre.
 > Afficher le numéro sur chaque onglet pour rendre le raccourci découvrable.
 
-- [ ] Afficher le numéro de l'onglet (1, 2, 3, 4…) sur chaque onglet de la barre.
-- [ ] Indiquer clairement que c'est `⌘ + numéro` (tooltip au survol, ou badge discret type `⌘1`).
-- [ ] Garder la numérotation cohérente avec l'ordre réel des onglets (re-numéroter après close/réorganisation).
+- [x] Afficher le numéro de l'onglet (1, 2, 3, 4…) sur chaque onglet de la barre.
+- [x] Indiquer clairement que c'est `⌘ + numéro` (tooltip au survol `⌘N`).
+- [x] Garder la numérotation cohérente avec l'ordre réel des onglets (index de la liste → re-numéroté automatiquement).
 - [ ] Idem côté fenêtres/panes si pertinent : montrer comment focus un pane précis.
-- [ ] (relié à l'idée 3 « Settings > Raccourcis » : une vue listant tous les shortcuts.)
+- [x] (relié à l'idée 3 « Settings > Raccourcis » : cheat-sheet listant tous les shortcuts.)
 
 ## 11. Menu clic droit pour gérer fenêtres/panes (sans raccourci)
 
 > Pouvoir tout faire à la souris : clic droit → ajouter une nouvelle fenêtre/pane,
 > en fermer une, réorganiser, plutôt que de devoir connaître les raccourcis clavier.
 
-- [ ] Menu contextuel (clic droit sur un pane / la barre d'onglets) avec les actions principales :
-  - [ ] « Nouvelle fenêtre / pane » (équiv. `⌘D` / `⌘↵`).
-  - [ ] « Nouvel onglet » (équiv. `⌘T`).
-  - [ ] « Fermer cette fenêtre / cet onglet ».
-  - [ ] « Rouvrir la fenêtre/onglet fermé » (cf. idée 1).
-- [ ] Toutes les actions clavier doivent aussi être accessibles à la souris (découvrabilité).
-- [ ] Afficher le raccourci à côté de chaque entrée du menu (apprentissage des shortcuts).
-- [ ] Éventuellement : changer le layout / zoomer un pane depuis ce même menu.
+- [x] Menu contextuel (clic droit sur un pane) avec les actions principales :
+  - [x] « Nouvelle fenêtre / pane » (+ « sandboxée »).
+  - [x] « Nouvel onglet ».
+  - [x] « Fermer cette fenêtre / cet onglet ».
+  - [x] « Rouvrir le dernier fermé » (cf. idée 1).
+- [x] Toutes les actions clavier accessibles à la souris (le menu + la palette `⌘K`).
+- [x] Afficher le raccourci à côté de chaque entrée du menu (apprentissage des shortcuts).
+- [x] Éventuellement : changer le layout / zoomer un pane depuis ce même menu.
 
 ## 12. Palette de commandes (`⌘K`)
 
@@ -176,22 +200,22 @@ Légende : `[ ]` à faire · `[~]` en cours · `[x]` fait
 > n'importe quelle action en tapant son nom — façon VS Code / Raycast / Spotlight.
 > C'est la réponse « clavier » à la même friction que les idées 10 et 11 : la **découvrabilité**.
 
-- [ ] Overlay modal centré, ouvert par `⌘K`, fermé par `Esc`.
-- [ ] Liste filtrable en *fuzzy search* : on tape quelques lettres → la liste se réduit, `↵` exécute.
-- [ ] Référencer toutes les actions de l'app : nouvel onglet/fenêtre, changer de layout, aller à l'onglet N, fermer, rouvrir l'onglet fermé, sandboxer un pane, ouvrir les Settings…
-- [ ] Afficher le raccourci à côté de chaque action → on apprend les shortcuts en s'en servant.
-- [ ] Brancher la liste des sessions tmux (idée 2) : taper le nom d'une session pour la rattacher.
+- [x] Overlay modal centré, ouvert par `⌘K`, fermé par `Esc`.
+- [x] Liste filtrable en *fuzzy search* : on tape quelques lettres → la liste se réduit, `↵` exécute, `↑/↓` navigue.
+- [x] Référencer toutes les actions : onglet/fenêtre, layout, aller à l'onglet N, fermer, rouvrir, sandboxer, Settings, scroll…
+- [x] Afficher le raccourci à côté de chaque action → on apprend les shortcuts en s'en servant.
+- [x] Brancher la liste des sessions tmux (idée 2) : taper le nom d'une session pour la rattacher.
 - [ ] Éventuellement : actions « projet » (ouvrir un dossier récent, lancer `claude` dans un nouveau pane).
-- [ ] (chapeaute les idées 10 et 11 : même problème de découvrabilité, résolu au clavier.)
+- [x] (chapeaute les idées 10 et 11 : même problème de découvrabilité, résolu au clavier.)
 
 ## 13. Confirmer avant de fermer un pane où un agent tourne
 
 > Éviter de tuer un `claude` en plein travail par un `⌘W` / `⌃⇧W` réflexe.
 
-- [ ] Détecter qu'un agent tourne dans le pane (cf. heuristiques de l'idée 6 : sortie active, pas au prompt).
-- [ ] Sur `pty_kill` (⌘W / ⌃⇧W / ⌘⇧D), si un agent tourne → demander confirmation avant de détruire.
-- [ ] Confirmation légère (modale / inline), avec « Fermer quand même » et `Esc` pour annuler.
-- [ ] Idéalement proposer **« Détacher plutôt que tuer »** → garde la session tmux vivante (relié à idée 1 : entre dans l'historique des fermées, réouvrable par `⌘⇧T`).
+- [x] Détecter qu'un agent tourne dans le pane (commande backend `pty_foreground` → tmux `#{pane_current_command}` ; « occupé » = process en avant-plan qui n'est pas un shell de login).
+- [x] Sur `pty_kill` (⌘W = fermer l'onglet), si un agent tourne → demander confirmation avant de détruire. ⚠️ Note : `⌃⇧W`/`⌘⇧D` (fermer un pane) **détachent déjà** (session gardée vivante, réouvrable par `⌘⇧D`), donc seul `⌘W` détruit et a besoin du garde-fou.
+- [x] Confirmation légère (modale) avec « Fermer quand même » et `Esc` pour annuler.
+- [x] Idéalement proposer **« Détacher plutôt que tuer »** → garde la session tmux vivante (entre dans la pile des fermées, réouvrable par `⌘⇧D`). C'est le défaut sûr (touche `↵`).
 - [ ] Réglage on/off dans les Settings (idée 3) pour ceux que la confirmation gêne.
 
 ## 14. Déplacer / réorganiser les panes au clavier (comme kitty)
@@ -199,12 +223,12 @@ Légende : `[ ]` à faire · `[~]` en cours · `[x]` fait
 > Ex. : une moitié d'écran avec un shell, l'autre moitié avec deux shells. Je veux pouvoir
 > **bouger** une fenêtre d'une position à l'autre facilement (`⌘`+flèches), pas juste la focus.
 
-- [ ] Action « déplacer le pane » : échanger/réordonner le pane focus avec son voisin (gauche/droite/haut/bas).
-- [ ] Raccourci dédié, ex. `⌘⇧`+flèches pour *déplacer* (les `⌘`+flèches actuels gardent le *focus*).
-- [ ] Réutiliser `neighbor()` de `layouts.ts` pour trouver le voisin dans la direction donnée.
-- [ ] Déplacer = réordonner la liste `panes` du tab → tout le layout se recalcule (rien ne se casse).
-- [ ] Promouvoir un pane en « main » (le gros de `tall`/`fat`) via un raccourci, façon kitty (`move_window_to_top`).
-- [ ] Persister le nouvel ordre dans `localStorage` (comme le reste du layout).
+- [x] Action « déplacer le pane » : échanger/réordonner le pane focus avec son voisin (gauche/droite/haut/bas).
+- [x] Raccourci dédié, ex. `⌘⇧`+flèches pour *déplacer* (les `⌘`+flèches actuels gardent le *focus*).
+- [x] Réutiliser `neighbor()` de `layouts.ts` pour trouver le voisin dans la direction donnée.
+- [x] Déplacer = réordonner la liste `panes` du tab → tout le layout se recalcule (rien ne se casse).
+- [x] Promouvoir un pane en « main » (le gros de `tall`/`fat`) via un raccourci `` ⌃⇧` `` / `⌘⇧M`, façon kitty (`move_window_to_top`).
+- [x] Persister le nouvel ordre dans `localStorage` (comme le reste du layout).
 - [ ] (alternative souris : drag & drop d'un pane sur un autre pour les échanger — relié à idée 11.)
 
 ## 15. Drag de n'importe quel fichier + picker `@` (généralise l'idée 4)
@@ -212,13 +236,13 @@ Légende : `[ ]` à faire · `[~]` en cours · `[x]` fait
 > Glisser un fichier (pas que des images) depuis le Finder → son chemin s'injecte dans le
 > pane focus, façon `@mention`. Et un picker `@` natif pour les fichiers du projet.
 
-- [ ] Étendre le drag & drop de l'idée 4 à **tout type de fichier**, pas seulement les images.
-- [ ] Déposer un fichier → injecter son chemin dans le PTY focus (`pty_write`), sans le copier (contrairement aux images qu'on sauve).
-- [ ] Gérer plusieurs fichiers d'un coup (chemins séparés par des espaces).
-- [ ] Picker `@` : taper `@` dans un pane → liste filtrable des fichiers du projet (cwd), `↵` insère le chemin.
-  - [ ] Réutiliser la même UI de *fuzzy search* que la palette `⌘K` (idée 12).
-  - [ ] Se limiter au `cwd` / respecter `.gitignore` pour ne pas noyer la liste.
-- [ ] Bien distinguer chemin absolu vs relatif au `cwd` selon ce que Claude attend.
+- [x] Étendre le drag & drop de l'idée 4 à **tout type de fichier** (le handler injecte déjà tout chemin déposé).
+- [x] Déposer un fichier → injecter son chemin dans le PTY focus (`pty_write`), sans le copier.
+- [x] Gérer plusieurs fichiers d'un coup.
+- [~] Picker de fichiers du `cwd`, `↵` insère le chemin — fait via **`⌘P`** (déclenchement par raccourci, façon kitty *hints*) plutôt que par la frappe d'`@` (jugée trop intrusive).
+  - [x] Réutiliser la même UI de *fuzzy search* que la palette `⌘K` (`fuzzyScore`).
+  - [x] Se limiter au `cwd` / respecter `.gitignore` (`git ls-files`).
+- [~] Chemin **relatif** au `cwd` injecté (Claude le résout) ; absolu non distingué pour l'instant.
 
 ## 16. Composeur de prompt multi-lignes
 
@@ -226,39 +250,109 @@ Légende : `[ ]` à faire · `[~]` en cours · `[x]` fait
 > pane focus. Fini de se battre avec l'éditeur de ligne du terminal pour les retours à la
 > ligne, le déplacement du curseur et la souris.
 
-- [ ] Zone de texte dédiée (sous le pane focus ou en overlay) avec un vrai éditeur multi-lignes.
-- [ ] **Retours à la ligne libres** : `↵` insère une nouvelle ligne, `⌘↵` (ou `⌃↵`) envoie le prompt — on n'est plus à la merci du comportement de la ligne du terminal.
-- [ ] **Souris** : cliquer pour placer le curseur, sélectionner, éditer n'importe où dans le texte (impossible proprement dans un PTY brut).
-- [ ] Coller une **image inline** dans la zone → la sauver + injecter son chemin (relié aux idées 4 et 15).
-- [ ] Confort d'édition : markdown basique, undo/redo, sélection, peut-être coloration légère.
-- [ ] À l'envoi : transmettre le texte au PTY focus (`pty_write`), en gérant proprement le multi-lignes (bracketed paste pour que Claude le reçoive d'un bloc).
-- [ ] Garder un historique des prompts envoyés (relié à l'idée « historique de prompts cherchable »).
-- [ ] Brancher le picker `@` (idée 15) et la bibliothèque de snippets dans cette zone.
+- [x] Zone de texte dédiée (overlay flottant) avec un vrai éditeur multi-lignes (`⌘E`).
+- [x] **Retours à la ligne libres** : `↵` insère une nouvelle ligne, `⌘↵` envoie le prompt.
+- [x] **Souris** : édition normale dans la textarea.
+- [x] Coller une **image inline** dans la zone → la sauver + insérer son chemin (relié aux idées 4 et 15).
+- [~] Confort d'édition : textarea simple (undo/sélection natifs) ; markdown/coloration pas encore.
+- [x] À l'envoi : transmettre le texte au PTY focus en **bracketed paste** (bloc unique).
+- [ ] Garder un historique des prompts envoyés.
+- [ ] Brancher le picker `@` (idée 15) et une bibliothèque de snippets dans cette zone.
 
 ## 17. Renommer onglets/fenêtres + code-couleur par projet
 
 > Ne jamais confondre deux projets ouverts côte à côte : chaque repo reçoit une teinte,
 > et on peut renommer librement onglets et fenêtres (panes) et choisir leurs couleurs.
 
-- [ ] **Renommer un onglet** (double-clic sur le titre ou via menu/palette), titre persistant.
-- [ ] **Renommer une fenêtre/pane** de la même façon (remplace les `p1/p2` par un nom parlant).
+- [x] **Renommer un onglet** (double-clic sur le titre, ou palette), titre persistant.
+- [ ] **Renommer une fenêtre/pane** de la même façon (remplace les `p1/p2`).
 - [ ] **Changer la couleur** d'un onglet / d'un pane à la main (palette de couleurs).
-- [ ] **Code-couleur automatique par projet** : chaque repo (cwd / racine git) reçoit une teinte ; bordure du pane + onglet prennent cette couleur → repérage immédiat.
-  - [ ] Déduire la couleur du chemin du projet (hash → teinte) par défaut, surchargée par un choix manuel.
-- [ ] Titre auto par défaut si non renommé : `cwd` + branche git (au lieu de `p1`).
-- [ ] Persister noms + couleurs dans `localStorage` (avec le reste du layout).
-- [ ] Réglages dans les Settings (idée 3) ; éventuellement éditable depuis le clic droit (idée 11).
+- [x] **Code-couleur automatique par projet** : teinte dérivée du `cwd` ; onglet (point) + bordure du pane focus (`--pane-accent`) la prennent → repérage immédiat.
+  - [x] Déduire la couleur du chemin du projet (hash `cwd` → teinte HSL).
+- [~] Titre auto par défaut : nom du dossier (`cwd`) ✓ ; + branche git pas encore.
+- [x] Persister le titre dans `localStorage` (la teinte est dérivée, pas stockée).
+- [~] Réglages/édition : double-clic ✓ ; depuis Settings/clic-droit pas encore.
 
 ## 18. Nouveau pane = même dossier courant (hériter le `cwd`)
 
 > Quand je fais `⌘D` (nouvelle fenêtre/pane), elle doit s'ouvrir **dans le même dossier
 > courant** que le pane d'où je viens — pas à `$HOME`. Comme kitty / iTerm.
 
-- [ ] À la création d'un pane (`⌘D` / `⌘↵` / `⌃⇧↵`), démarrer la nouvelle session tmux dans le `cwd` du **pane focus**, pas dans le home.
-- [ ] Récupérer le `cwd` réel du pane source (ex. via tmux `#{pane_current_path}`, ou suivre le `cwd` du process), puis le passer au `tmux new-session` (option `-c <path>`).
-- [ ] Même logique pour un **nouvel onglet** (`⌘T`) : repartir du dossier du pane/onglet actif.
-- [ ] ⚠️ Cohérent avec l'idée 7 (login shell frais) : on garde un shell propre **mais** au bon dossier — relancer l'env sans repartir à `$HOME`.
-- [ ] Cas du tout premier pane (aucun parent) : tomber sur `$HOME` ou un dossier par défaut configurable.
+- [x] À la création d'un pane (`⌘D` / `⌘↵` / `⌃⇧↵`), démarrer la nouvelle session tmux dans le `cwd` du **pane focus**, pas dans le home.
+- [x] Récupérer le `cwd` réel du pane source (commande `pty_cwd` → tmux `#{pane_current_path}`), puis le passer au `tmux new-session` (option `-c <path>`).
+- [x] Même logique pour un **nouvel onglet** (`⌘T`) : repartir du dossier du pane/onglet actif.
+- [x] ⚠️ Cohérent avec l'idée 7 (login shell frais) : shell propre **au bon dossier** — le `-c` place la session, le login shell frais (`exec $SHELL -l`, idée 7) est fait.
+- [x] Cas du tout premier pane (aucun parent) : tomber sur `$HOME` ou un dossier par défaut configurable. (pas d'entrée `cwd` → comportement tmux par défaut)
+
+## 19. Mode « Quake » / dropdown global + lanceur rapide de prompt
+
+> Un raccourci système (ex. `⌃\``) qui fait **descendre superkitty par-dessus n'importe quelle
+> app**, où que tu sois, pour balancer un prompt à Claude sans changer de fenêtre — puis le re-cache.
+> Petite surface : on choisit le projet (onglet), on tape, `↵`, et ça crée le pane et lance la demande.
+
+- [x] **Hotkey global** `` ⌃` `` (via `tauri-plugin-global-shortcut`) invoque/masque superkitty depuis n'importe quelle app.
+- [~] Apparence « Quake » : overlay qui **descend du haut** (animation CSS) ; la vraie fenêtre native redimensionnée en bandeau reste à faire.
+- [x] **Choix du projet** : afficher mes onglets et me laisser :
+  - [x] cliquer celui où je veux travailler, **ou**
+  - [x] pré-sélectionner par défaut **le dernier onglet sur lequel j'ai fait une demande** (mémorisé).
+  - [x] navigation clavier entre les onglets (`⌘1…9`).
+- [x] **Champ de prompt** directement focus : je tape et `↵` envoie.
+- [~] À l'envoi : envoyer au **pane focus de l'onglet choisi** + le lancer (`\r`). (réutilise le pane existant ; créer un nouveau pane = option à trancher)
+  - [~] Option réutiliser vs créer : on **réutilise** le pane focus pour l'instant.
+- [x] Réutiliser le `cwd` hérité (idée 18) — l'onglet a déjà son pane au bon dossier.
+- [x] Après envoi : se re-cacher automatiquement (`window.hide()` ; notif de fin via idée 6).
+- [ ] Réglages : choix du raccourci, position/taille du dropdown (Settings, idée 3).
+
+## 20. Scratchpad / notes par onglet
+
+> Un petit bloc-notes attaché à chaque projet (onglet) pour noter vite des TODO, un prompt
+> en préparation, une URL, un bout de log — sans quitter superkitty ni polluer le terminal.
+
+- [x] Volet bloc-notes ouvrable à côté du pane (toggle `⌃⇧N`), **par onglet/projet**.
+- [~] Texte libre + cases à cocher TODO — on peut taper `[ ]`/`[x]` librement ; pas (encore) de cases cliquables.
+- [x] Persistant dans `localStorage` (`superkitty.notes.v1`, rattaché à l'id de l'onglet).
+- [x] Écrire un **prompt en préparation**, puis « envoyer au pane focus » (`⌘↵` / bouton ➤).
+- [~] Markdown léger : texte brut pour l'instant.
+- [ ] Éventuellement une note **globale** (pas liée à un projet) en plus des notes par onglet.
+- [ ] (option future : stocker dans un fichier `NOTES.md` du projet plutôt qu'en `localStorage`.)
+
+## 21. Sélecteur graphique de layout (menu visuel, pas la commande)
+
+> Aujourd'hui on cycle les layouts au clavier (`⌃⇧L`) à l'aveugle : il faut taper plusieurs
+> fois pour tomber sur le bon, sans voir ce que ça donnera. Je veux un **petit menu graphique**
+> où chaque layout est dessiné en miniature → je vois d'un coup d'œil comment mes fenêtres
+> seront arrangées (en fonction du nombre de panes ouverts) et je clique celui que je veux.
+
+- [x] Menu/popover qui liste les layouts (`tall`, `fat`, `grid`, `horizontal`, `vertical`, `stack`) avec une **vignette de prévisualisation** de chacun (`src/LayoutPicker.tsx`).
+- [x] Les vignettes reflètent le **nombre de panes réel** du tab actif : dessiner les rectangles via `layouts.ts` (`layoutRects(name, n, focusedIndex) → Rect[]`) à l'échelle → la preview est exacte, pas générique (le pane focus est teinté accent ; `stack` montre des cartes empilées).
+- [x] Cliquer une vignette applique le layout immédiatement (et le persiste comme aujourd'hui, via `setLayout` → `localStorage`).
+- [x] Marquer le layout actif dans le menu (surbrillance + bordure accent).
+- [x] Ouvrir ce menu facilement : bouton ▦ dans la barre d'onglets (à côté de ☰). (au survol / coin du pane : pas encore)
+- [x] Garder `⌃⇧L` (cycle rapide) en complément — le menu visuel est l'alternative découvrable « je vois avant de choisir ».
+- [x] (relié à l'idée 11 « menu clic droit » et l'idée 12 « palette `⌘K` » : changer de layout depuis la palette — fait (chaque layout y est listé) ; « Disposition suivante » aussi dans le menu clic-droit.)
+
+## 22. Hints / tips de raccourcis dans l'app (apprendre en s'en servant)
+
+> Afficher des petites astuces contextuelles directement dans l'app pour faire découvrir
+> les raccourcis aux nouveaux utilisateurs — qu'on apprenne à se servir de superkitty
+> sans avoir à lire une doc. (même friction de **découvrabilité** que les idées 10, 11, 12.)
+
+- [ ] **Barre de hint discrète** (bas de fenêtre / coin) qui montre une astuce à la fois,
+      ex. « Astuce : `⌘D` pour ouvrir une nouvelle fenêtre », et tourne entre les tips.
+- [ ] **Hints contextuels** selon ce que fait l'utilisateur :
+  - [ ] un seul pane ouvert depuis longtemps → suggérer `⌘D` / `⌃⇧↵` pour splitter.
+  - [ ] plusieurs panes → suggérer `⌘`+flèches (focus) et `⌘⇧`+flèches (déplacer).
+  - [ ] plusieurs onglets → suggérer `⌘1…⌘9` pour sauter directement.
+  - [ ] après un `⌃⇧L` à l'aveugle → pointer vers le picker visuel ▦ (idée 21).
+- [ ] **Écran/overlay d'accueil** au premier lancement : les 4-5 raccourcis essentiels
+      (nouvel onglet, nouveau pane, sidebar `⌘B`, changer de layout), avec « ne plus afficher ».
+- [ ] **Cheat sheet** complète des raccourcis ouvrable à la demande (ex. `⌘/` ou `?`),
+      reprenant le tableau du CLAUDE.md → liste de toutes les actions + leurs touches.
+- [ ] Ne pas être intrusif : tips dismissables, fréquence réglable, et les masquer une fois
+      qu'un raccourci a été utilisé (« il connaît, on arrête de lui rappeler »).
+- [ ] Réglage on/off dans les Settings (idée 3) pour les masquer entièrement.
+- [ ] (relié aux idées 10 « numéros d'onglets », 11 « menu clic droit » et 12 « palette `⌘K` » :
+      même objectif de découvrabilité ; la palette peut aussi servir de cheat sheet vivante.)
 
 ---
 

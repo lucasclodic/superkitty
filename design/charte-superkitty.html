@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>superkitty — Charte graphique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   superkitty — Charte graphique
+   Chaleur rétro-computing + note arc-en-ciel · identité propre
+   (inspiré de l'esprit 70s/80s, PAS un pastiche Apple)
+   ============================================================ */
+
+:root {
+  /* —— Arc-en-ciel superkitty (chaud, légèrement passé) —— */
+  --c-green:  #5FA85B;
+  --c-amber:  #F2C14E;
+  --c-apricot:#EB8A4C;
+  --c-coral:  #D95D52;
+  --c-plum:   #8E6BA8;
+  --c-teal:   #3E94A6;
+
+  /* dégradé signature (fluide, pas en bandes) */
+  --rainbow: linear-gradient(100deg,
+     var(--c-teal) 0%, var(--c-plum) 22%, var(--c-coral) 48%,
+     var(--c-apricot) 70%, var(--c-amber) 86%, var(--c-green) 100%);
+
+  /* —— Neutres chauds —— */
+  --cream:   #F3EEE3;
+  --cream-2: #EAE3D3;
+  --card:    #FCFAF3;
+  --line:    #DBD3C2;
+  --ink:     #26211C;
+  --ink-soft:#6B6356;
+  --ink-faint:#A39C8C;
+
+  /* —— Terminal —— */
+  --term-bg: #211D18;
+  --term-fg: #ECE6D7;
+  --term-dim:#948C7A;
+
+  /* —— Typo —— */
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --mono: "Space Mono", Monaco, "SF Mono", monospace;
+
+  --r-lg: 22px;
+  --r-md: 14px;
+  --r-sm: 9px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: var(--display);
+  color: var(--ink);
+  background: var(--cream);
+  background-image:
+    radial-gradient(900px 520px at 88% -8%, rgba(62,148,166,.10), transparent 60%),
+    radial-gradient(800px 480px at -6% 108%, rgba(217,93,82,.09), transparent 60%);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+/* grain doux */
+body::after {
+  content:""; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  opacity: .25; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+}
+
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 26px 130px; }
+section { margin-top: 78px; }
+
+/* reveal */
+.reveal { opacity: 0; transform: translateY(16px); animation: rise .7s cubic-bezier(.2,.85,.25,1) forwards; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+
+/* ===== Hero ===== */
+.hero { text-align: center; padding-top: 92px; }
+.mark { width: 124px; height: 124px; margin: 0 auto 30px; display: block;
+  filter: drop-shadow(0 10px 22px rgba(38,33,28,.20)); }
+.hero h1 {
+  font-family: var(--display); font-weight: 800; font-size: clamp(64px, 13vw, 150px);
+  letter-spacing: -3px; line-height: .86; margin: 0; color: var(--ink);
+}
+.hero h1 .ki { background: var(--rainbow); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--ink-soft); margin-bottom: 16px; }
+.tag { font-size: 21px; color: var(--ink-soft); margin-top: 18px; font-weight: 400; }
+.tag b { color: var(--ink); font-weight: 600; }
+
+/* ruban dégradé fluide (signature, fin) */
+.ribbon { height: 8px; border-radius: 99px; background: var(--rainbow); max-width: 460px;
+  margin: 36px auto 0; box-shadow: 0 6px 18px rgba(217,93,82,.22); }
+
+/* ===== Titres de section ===== */
+.sec-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.dot { width: 11px; height: 11px; border-radius: 99px; background: var(--rainbow); }
+.sec-num { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+h2 { font-family: var(--display); font-weight: 700; font-size: 40px; margin: 0; letter-spacing: -1.2px; }
+.desc { color: var(--ink-soft); max-width: 62ch; margin: 8px 0 28px; font-size: 17px; }
+.rule { height: 2px; border: 0; background: var(--line); margin: 0; }
+
+/* ===== Cartes ===== */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: 0 2px 0 var(--line), 0 16px 40px rgba(38,33,28,.07); padding: 24px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+/* ===== Palette ===== */
+.pal { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+.sw { border-radius: var(--r-md); overflow: hidden; background: var(--card);
+  border: 1px solid var(--line); box-shadow: 0 2px 0 var(--line); }
+.sw .chip { height: 86px; }
+.sw .m { padding: 9px 11px; }
+.sw .m b { display: block; font-size: 14px; font-weight: 700; }
+.sw .m span { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
+.neutral { display: grid; grid-template-columns: repeat(auto-fill,minmax(118px,1fr)); gap: 12px; margin-top: 14px; }
+
+/* ===== Typo ===== */
+.trow { display: grid; grid-template-columns: 140px 1fr; gap: 22px; align-items: baseline;
+  padding: 18px 0; border-bottom: 1px solid var(--line); }
+.trow:last-child { border-bottom: 0; }
+.tlab { font-family: var(--mono); font-size: 10px; letter-spacing: .5px; color: var(--ink-soft); line-height: 1.7; }
+.tlab span { display: block; color: var(--ink-faint); }
+.d { font-family: var(--display); } .mo { font-family: var(--mono); }
+
+/* ===== Composants ===== */
+.controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.btn { font-family: var(--display); font-weight: 600; font-size: 16px; cursor: pointer;
+  padding: 11px 22px; border-radius: 99px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink); box-shadow: 0 2px 0 var(--line);
+  transition: transform .08s, box-shadow .08s; }
+.btn:active { transform: translateY(2px); box-shadow: none; }
+.btn-primary { border: 0; color: #fff; background: var(--rainbow);
+  box-shadow: 0 6px 16px rgba(217,93,82,.30); text-shadow: 0 1px 0 rgba(0,0,0,.18); }
+.btn-ghost { background: transparent; }
+
+.pillrow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.pill { font-family: var(--mono); font-size: 12px; padding: 5px 13px; border-radius: 99px;
+  color: #fff; }
+.pill.g{background:var(--c-green)} .pill.a{background:var(--c-amber);color:var(--ink)}
+.pill.ap{background:var(--c-apricot)} .pill.c{background:var(--c-coral)}
+.pill.p{background:var(--c-plum)} .pill.t{background:var(--c-teal)}
+
+.field { display: flex; flex-direction: column; gap: 6px; max-width: 320px; margin-top: 20px; }
+.field label { font-family: var(--mono); font-size: 10px; letter-spacing: .5px; color: var(--ink-soft); }
+.field input { font-family: var(--mono); font-size: 14px; padding: 11px 13px; color: var(--ink);
+  background: var(--cream); border: 1px solid var(--line); border-radius: var(--r-sm); outline: none; }
+.field input:focus { border-color: var(--c-teal); box-shadow: 0 0 0 3px rgba(62,148,166,.22); }
+
+/* ===== Fenêtre superkitty (chrome original, pas Mac) ===== */
+.win { border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line);
+  box-shadow: 0 24px 60px rgba(38,33,28,.18); background: var(--card); }
+.win-bar { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 16px;
+  background: var(--card); border-bottom: 1px solid var(--line); }
+.win-bar .mini { width: 22px; height: 22px; }
+.win-bar .ttl { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+.win-bar .tabs { margin-left: auto; display: flex; gap: 7px; }
+.win-bar .tab { font-family: var(--mono); font-size: 11px; padding: 5px 12px; border-radius: 99px;
+  background: var(--cream); color: var(--ink-soft); border: 1px solid var(--line); }
+.win-bar .tab.on { color: #fff; background: var(--c-coral); border-color: transparent; }
+.win-bar .x { font-family: var(--mono); color: var(--ink-faint); margin-left: 8px; }
+
+/* ===== Terminal ===== */
+.term { background: var(--term-bg); color: var(--term-fg); font-family: var(--mono);
+  font-size: 13px; line-height: 1.6; padding: 20px 22px; min-height: 250px; }
+.term .u{color:var(--c-green)} .term .pa{color:var(--c-teal)} .term .pr{color:var(--c-plum)}
+.term .st{color:var(--c-apricot)} .term .dim{color:var(--term-dim)}
+.term .ok{color:var(--c-green)} .term .wa{color:var(--c-amber)}
+.cur{display:inline-block;width:8px;height:15px;background:var(--c-green);vertical-align:-2px;animation:bl 1s steps(1) infinite}
+@keyframes bl{50%{opacity:0}}
+
+/* ===== Tokens ===== */
+.tok { font-family: var(--mono); font-size: 12.5px; line-height: 1.95;
+  background: var(--term-bg); color: var(--term-fg); padding: 22px 24px; border-radius: var(--r-lg);
+  overflow-x: auto; }
+.tok .k{color:var(--c-amber)} .tok .v{color:var(--c-teal)} .tok .cm{color:var(--term-dim)}
+
+footer { margin-top: 96px; text-align: center; color: var(--ink-soft); }
+footer .ribbon { max-width: 240px; margin: 22px auto 12px; }
+
+@media (max-width: 820px) {
+  .cols { grid-template-columns: 1fr; }
+  .pal { grid-template-columns: repeat(3,1fr); }
+  .trow { grid-template-columns: 1fr; gap: 6px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- défs SVG : le mark chat (réutilisé) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="halo" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0"  stop-color="#3E94A6"/>
+        <stop offset=".4" stop-color="#8E6BA8"/>
+        <stop offset=".7" stop-color="#D95D52"/>
+        <stop offset="1"  stop-color="#EB8A4C"/>
+      </linearGradient>
+      <g id="catmark">
+        <circle cx="60" cy="60" r="54" fill="url(#halo)"/>
+        <g fill="none" stroke="#FCFAF3" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+          <!-- oreilles -->
+          <path d="M40 47 L34 26 L55 40"/>
+          <path d="M80 47 L86 26 L65 40"/>
+          <!-- tête -->
+          <ellipse cx="60" cy="66" rx="27" ry="24"/>
+          <!-- moustaches -->
+          <path d="M30 64 L14 60 M30 71 L15 72"/>
+          <path d="M90 64 L106 60 M90 71 L105 72"/>
+        </g>
+        <!-- yeux + truffe -->
+        <circle cx="50" cy="63" r="3.6" fill="#FCFAF3"/>
+        <circle cx="70" cy="63" r="3.6" fill="#FCFAF3"/>
+        <path d="M56 73 L64 73 L60 78 Z" fill="#FCFAF3"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- HERO -->
+  <header class="hero reveal" style="animation-delay:.05s">
+    <svg class="mark" viewBox="0 0 120 120"><use href="#catmark"/></svg>
+    <div class="kicker">Charte graphique · terminal pour Claude Code</div>
+    <h1>super<span class="ki">kitty</span></h1>
+    <p class="tag">Un terminal qui <b>ronronne en six couleurs</b> — et qui ne perd jamais ta session.</p>
+    <div class="ribbon"></div>
+  </header>
+
+  <!-- 01 — Direction -->
+  <section class="reveal" style="animation-delay:.1s">
+    <div class="sec-head"><span class="dot"></span><span class="sec-num">01 / direction</span></div>
+    <h2>L'idée</h2>
+    <p class="desc">
+      On garde la <b>chaleur rétro-computing</b> et la <b>note arc-en-ciel</b> qui t'ont plu — mais
+      sans pasticher : pas de pomme, pas de barre Mac à rayures, pas de feux tricolores.
+      L'identité, c'est le <b>chat</b> (super<i>kitty</i>) posé sur un halo dégradé, une typo
+      <b>chunky et contemporaine</b>, et un arc-en-ciel traité en <b>dégradé fluide</b> — pas en
+      six bandes alignées. Le reste est chaud, calme et lisible pour de longues sessions.
+    </p>
+    <hr class="rule" />
+  </section>
+
+  <!-- 02 — Palette -->
+  <section class="reveal" style="animation-delay:.15s">
+    <div class="sec-head"><span class="dot"></span><span class="sec-num">02 / couleurs</span></div>
+    <h2>Palette</h2>
+    <p class="desc">Six teintes chaudes et légèrement passées — utilisées en <b>accents</b> et comme <b>tint par projet/onglet</b>. Le dégradé fluide est la signature ; les bandes franches, on évite.</p>
+    <div class="pal">
+      <div class="sw"><div class="chip" style="background:var(--c-green)"></div><div class="m"><b>Sauge</b><span>#5FA85B</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--c-amber)"></div><div class="m"><b>Ambre</b><span>#F2C14E</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--c-apricot)"></div><div class="m"><b>Abricot</b><span>#EB8A4C</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--c-coral)"></div><div class="m"><b>Corail</b><span>#D95D52</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--c-plum)"></div><div class="m"><b>Prune</b><span>#8E6BA8</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--c-teal)"></div><div class="m"><b>Paon</b><span>#3E94A6</span></div></div>
+    </div>
+    <div class="neutral">
+      <div class="sw"><div class="chip" style="height:52px;background:var(--cream)"></div><div class="m"><b>Crème</b><span>#F3EEE3</span></div></div>
+      <div class="sw"><div class="chip" style="height:52px;background:var(--cream-2)"></div><div class="m"><b>Crème −</b><span>#EAE3D3</span></div></div>
+      <div class="sw"><div class="chip" style="height:52px;background:var(--line)"></div><div class="m"><b>Ligne</b><span>#DBD3C2</span></div></div>
+      <div class="sw"><div class="chip" style="height:52px;background:var(--ink)"></div><div class="m"><b>Encre</b><span>#26211C</span></div></div>
+      <div class="sw"><div class="chip" style="height:52px;background:var(--term-bg)"></div><div class="m"><b>Terminal</b><span>#211D18</span></div></div>
+      <div class="sw"><div class="chip" style="height:52px;background:var(--term-fg)"></div><div class="m"><b>Texte term.</b><span>#ECE6D7</span></div></div>
+    </div>
+  </section>
+
+  <!-- 03 — Typo -->
+  <section class="reveal" style="animation-delay:.2s">
+    <div class="sec-head"><span class="dot"></span><span class="sec-num">03 / typographie</span></div>
+    <h2>Typographie</h2>
+    <p class="desc">Deux voix : <b>Bricolage Grotesque</b> — chunky, contemporaine, pleine de caractère — pour les titres et l'UI ; <b>Space Mono</b> pour le terminal, le code et les micro-étiquettes.</p>
+    <div class="card">
+      <div class="trow">
+        <div class="tlab">DISPLAY<span>Bricolage · 800</span></div>
+        <div class="d" style="font-weight:800;font-size:46px;letter-spacing:-1.5px;line-height:1">Ça ronronne.<br>Ça reprend.</div>
+      </div>
+      <div class="trow">
+        <div class="tlab">CORPS<span>Bricolage · 400</span></div>
+        <div class="d" style="font-size:18px">Fermer la fenêtre ne tue jamais ta session : tmux la garde en vie, et la rouvrir réattache le run Claude en cours, scrollback inclus.</div>
+      </div>
+      <div class="trow">
+        <div class="tlab">MONO / TERMINAL<span>Space Mono · 400/700</span></div>
+        <div class="mo" style="font-size:15px">superkitty ~ % claude --resume<br><b>const id = "superkitty-p1"</b> // session tmux</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 — Composants -->
+  <section class="reveal" style="animation-delay:.25s">
+    <div class="sec-head"><span class="dot"></span><span class="sec-num">04 / composants</span></div>
+    <h2>Composants</h2>
+    <p class="desc">Cartes douces aux coins arrondis, boutons pilule, le dégradé réservé à l'action principale. Chrome de fenêtre <b>maison</b> — onglets pilule colorés au lieu des feux tricolores.</p>
+    <div class="cols">
+      <div class="card">
+        <div class="controls">
+          <button class="btn btn-primary">Nouvelle session</button>
+          <button class="btn">Ouvrir</button>
+          <button class="btn btn-ghost">Annuler</button>
+        </div>
+        <div class="pillrow">
+          <span class="pill g">sauge</span><span class="pill a">ambre</span>
+          <span class="pill ap">abricot</span><span class="pill c">corail</span>
+          <span class="pill p">prune</span><span class="pill t">paon</span>
+        </div>
+        <div class="field">
+          <label>NOM DE SESSION</label>
+          <input type="text" value="superkitty-p1" spellcheck="false" />
+        </div>
+      </div>
+
+      <div class="win">
+        <div class="win-bar">
+          <svg class="mini" viewBox="0 0 120 120"><use href="#catmark"/></svg>
+          <span class="ttl">~/Dev</span>
+          <div class="tabs">
+            <span class="tab on">superkitty</span>
+            <span class="tab">claude-api</span>
+            <span class="x">✕</span>
+          </div>
+        </div>
+        <div style="padding:22px">
+          <p style="margin:0 0 8px;font-size:17px;font-weight:600">Fenêtre maison</p>
+          <p style="margin:0;color:var(--ink-soft);font-size:15px">Barre claire, mark chat à gauche, onglets pilule teintés par projet à droite. Reconnaissable, pas un clone.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 — Terminal -->
+  <section class="reveal" style="animation-delay:.3s">
+    <div class="sec-head"><span class="dot"></span><span class="sec-num">05 / terminal</span></div>
+    <h2>Le terminal</h2>
+    <p class="desc">Le cœur : fond charbon chaud, texte crème, accents ANSI puisés dans la palette. Confortable des heures durant.</p>
+    <div class="win">
+      <div class="win-bar">
+        <svg class="mini" viewBox="0 0 120 120"><use href="#catmark"/></svg>
+        <span class="ttl">~/Dev/superkitty — claude</span>
+        <div class="tabs"><span class="tab on">superkitty</span><span class="x">✕</span></div>
+      </div>
+      <div class="term">
+        <div><span class="u">lucas@superkitty</span> <span class="pa">~/Dev/superkitty</span> <span class="pr">%</span> claude</div>
+        <div>&nbsp;</div>
+        <div><span class="st">✻</span> Welcome to <b>Claude Code</b></div>
+        <div class="dim">  /help · cwd: ~/Dev/superkitty</div>
+        <div>&nbsp;</div>
+        <div><span class="ok">●</span> Lecture de <span class="pa">src/App.tsx</span> <span class="dim">(412 lignes)</span></div>
+        <div><span class="wa">●</span> Édition de <span class="pa">src/themes.ts</span> <span class="dim">+1 thème « superkitty »</span></div>
+        <div><span class="ok">✓</span> Type-check OK <span class="dim">· 0 erreur</span></div>
+        <div>&nbsp;</div>
+        <div><span class="pr">%</span> <span class="cur"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 — Tokens -->
+  <section class="reveal" style="animation-delay:.35s">
+    <div class="sec-head"><span class="dot"></span><span class="sec-num">06 / tokens</span></div>
+    <h2>Design tokens</h2>
+    <p class="desc">À coller dans <span class="mo">App.css</span> (chrome) et <span class="mo">themes.ts</span> (thème xterm « superkitty »).</p>
+    <div class="tok">
+<span class="cm">/* App.css */</span><br>
+<span class="k">--c-green</span>:<span class="v">#5FA85B</span>; <span class="k">--c-amber</span>:<span class="v">#F2C14E</span>; <span class="k">--c-apricot</span>:<span class="v">#EB8A4C</span>;<br>
+<span class="k">--c-coral</span>:<span class="v">#D95D52</span>; <span class="k">--c-plum</span>:<span class="v">#8E6BA8</span>; <span class="k">--c-teal</span>:<span class="v">#3E94A6</span>;<br>
+<span class="k">--cream</span>:<span class="v">#F3EEE3</span>; <span class="k">--card</span>:<span class="v">#FCFAF3</span>; <span class="k">--ink</span>:<span class="v">#26211C</span>;<br>
+<span class="k">--rainbow</span>: linear-gradient(100deg, teal→plum→coral→apricot→amber→green);<br>
+<br>
+<span class="cm">// themes.ts — xterm « superkitty »</span><br>
+{ <span class="k">name</span>:<span class="v">"superkitty"</span>, <span class="k">background</span>:<span class="v">"#211D18"</span>, <span class="k">foreground</span>:<span class="v">"#ECE6D7"</span>,<br>
+&nbsp;&nbsp;<span class="k">cursor</span>:<span class="v">"#5FA85B"</span>, <span class="k">green</span>:<span class="v">"#5FA85B"</span>, <span class="k">yellow</span>:<span class="v">"#F2C14E"</span>,<br>
+&nbsp;&nbsp;<span class="k">red</span>:<span class="v">"#D95D52"</span>, <span class="k">magenta</span>:<span class="v">"#8E6BA8"</span>, <span class="k">blue</span>:<span class="v">"#3E94A6"</span>, <span class="k">cyan</span>:<span class="v">"#3E94A6"</span> }
+    </div>
+  </section>
+
+  <footer class="reveal" style="animation-delay:.4s">
+    <div class="ribbon"></div>
+    <p>superkitty · charte graphique · proposition à valider</p>
+  </footer>
+
+</div>
+</body>
+</html>

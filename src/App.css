@@ -55,6 +55,9 @@ body {
 }
 
 .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-width: 30px;
   height: 26px;
   padding: 0 10px;
@@ -68,6 +71,35 @@ body {
   transition: background 0.12s, color 0.12s;
 }
 
+/* Per-project colour dot + name on a tab (idea #17). */
+.tab-color {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.tab-num {
+  opacity: 0.55;
+  font-size: 11px;
+}
+.tab-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+.tab-rename {
+  width: 150px;
+  font-weight: 600;
+  border-color: var(--accent);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+}
+
 .tab:hover {
   background: #2a2833;
   color: var(--text);
@@ -77,6 +109,22 @@ body {
   background: #353042;
   color: var(--text);
   border-color: #4a4360;
+}
+
+/* Activity dot when a pane in this tab rang its bell while unwatched (idea #6). */
+.tab.has-activity {
+  position: relative;
+}
+.tab.has-activity::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
 }
 
 .tab-new {
@@ -91,12 +139,272 @@ body {
   align-self: stretch;
 }
 
-/* ---- workspace / panes ---- */
-.workspace {
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px 6px 4px;
+}
+
+/* ---- body: workspace + session sidebar side by side ---- */
+.body {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
+}
+
+/* ---- workspace / panes ---- */
+.workspace {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
   padding: 6px;
+}
+
+/* ---- per-tab scratchpad (idea #20) ---- */
+.scratchpad {
+  flex: 0 0 280px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--titlebar-bg);
+  border-right: 1px solid var(--border);
+}
+
+.scratchpad-text {
+  flex: 1 1 auto;
+  min-height: 0;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px;
+}
+.scratchpad-text::placeholder {
+  color: var(--text-dim);
+}
+
+.scratchpad-foot {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* ---- session sidebar (idea #2) ---- */
+.sidebar {
+  flex: 0 0 260px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--titlebar-bg);
+  border-left: 1px solid var(--border);
+}
+
+.sidebar-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.sidebar-head-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.icon-btn:hover {
+  background: #2a2833;
+  color: var(--text);
+}
+.icon-btn.active {
+  background: #353042;
+  color: var(--text);
+}
+
+/* ---- visual layout picker (idea #21) ---- */
+.pop-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.layout-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1100;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 10px;
+  background: var(--titlebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.layout-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 76px;
+  padding: 8px 6px 6px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.layout-card:hover {
+  background: #2a2833;
+  color: var(--text);
+}
+.layout-card.active {
+  background: #353042;
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.layout-thumb {
+  position: relative;
+  width: 100%;
+  height: 42px;
+  border-radius: 4px;
+}
+
+.layout-cell {
+  position: absolute;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: #46415a55;
+}
+.layout-cell.focus {
+  border-color: var(--accent);
+  background: #c9a9ff40;
+}
+.layout-cell.ghost {
+  border-color: var(--border);
+  background: #2a2833;
+  opacity: 0.7;
+}
+
+.layout-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sidebar-empty {
+  margin: 0;
+  padding: 16px 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.session-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.session-item:hover {
+  background: #2a2833;
+}
+.session-item.open {
+  background: #353042;
+}
+
+.session-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  opacity: 0.5;
+}
+.session-dot.attached {
+  background: var(--accent);
+  opacity: 1;
+}
+
+.session-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.session-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-kill {
+  flex: 0 0 auto;
+  opacity: 0;
+  font-size: 13px;
+}
+.session-item:hover .session-kill {
+  opacity: 1;
+}
+.session-kill:hover {
+  background: #3a2227;
+  color: #ffb0b0;
 }
 
 .tab-root {
@@ -138,10 +446,698 @@ body {
 }
 
 .terminal-pane.active {
-  border-color: var(--accent);
+  border-color: var(--pane-accent, var(--accent));
+}
+
+/* Dedicated mount node for xterm — React never touches its children, so the
+   scrollbar overlay (a React sibling) can't fight xterm's DOM reconciliation. */
+.terminal-mount {
+  position: absolute;
+  inset: 0;
 }
 
 .terminal-pane .xterm {
   height: 100%;
   padding: 6px;
+}
+
+/* tmux owns the alternate screen, so xterm's own scrollbar never has content —
+   hide it and use our custom overlay (.pane-scrollbar) instead. */
+.terminal-pane .xterm-viewport {
+  scrollbar-width: none;
+}
+.terminal-pane .xterm-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- custom scrollbar overlay (driven by tmux copy-mode) ---- */
+.pane-scrollbar {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  bottom: 4px;
+  width: 12px;
+  z-index: 5;
+  cursor: default;
+  /* The track itself is transparent; the thumb is the only visible part. */
+}
+
+.pane-scrollbar-thumb {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: 4px;
+  background: var(--text-dim);
+  opacity: 0.35;
+  transition: opacity 0.12s, background 0.12s;
+}
+
+.pane-scrollbar:hover .pane-scrollbar-thumb,
+.pane-scrollbar.dragging .pane-scrollbar-thumb {
+  opacity: 0.8;
+  background: var(--accent);
+}
+
+/* ---- per-pane zoom button (kitty toggle_layout stack, idea #9) ---- */
+.pane-zoom {
+  position: absolute;
+  top: 8px;
+  right: 18px;
+  z-index: 6;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #1f1d26cc;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s, border-color 0.12s;
+}
+.pane-slot:hover .pane-zoom {
+  opacity: 1;
+}
+.pane-zoom:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: #2a2833;
+}
+
+/* Sandbox lock badge on a write-confined pane (idea #5). */
+.pane-sandbox {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  z-index: 6;
+  font-size: 12px;
+  opacity: 0.85;
+  pointer-events: none;
+  filter: grayscale(0.2);
+}
+
+/* Pulsing badge on a pane that rang its bell while unwatched (idea #6). */
+.pane-activity {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  z-index: 6;
+  pointer-events: none;
+  animation: sk-pulse 1.6s ease-out infinite;
+}
+@keyframes sk-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(201, 169, 255, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(201, 169, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 169, 255, 0);
+  }
+}
+
+/* ---- Quake quick prompt (idea #19) ---- */
+.quake-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+.quake {
+  width: min(720px, calc(100vw - 32px));
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--titlebar-bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: quake-drop 0.16s ease-out;
+}
+@keyframes quake-drop {
+  from {
+    transform: translateY(-100%);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.quake-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.quake-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.quake-tab:hover {
+  color: var(--text);
+}
+.quake-tab.active {
+  background: #353042;
+  color: var(--text);
+  border-color: var(--accent);
+}
+.quake-tab-num {
+  opacity: 0.55;
+  font-size: 11px;
+}
+
+.quake-text {
+  min-height: 96px;
+  max-height: 50vh;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  line-height: 1.5;
+  padding: 16px;
+}
+.quake-text::placeholder {
+  color: var(--text-dim);
+}
+
+/* ---- multi-line prompt composer (idea #16) ---- */
+.composer {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 1100;
+  width: min(720px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  background: var(--titlebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.composer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.composer-hint {
+  font-weight: 400;
+}
+
+.composer-text {
+  min-height: 90px;
+  max-height: 40vh;
+  resize: vertical;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 12px 14px;
+}
+.composer-text::placeholder {
+  color: var(--text-dim);
+}
+
+.composer-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* ---- command palette (idea #12) ---- */
+.palette {
+  align-self: flex-start;
+  margin-top: 12vh;
+  width: min(560px, calc(100vw - 48px));
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--titlebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.palette-input {
+  flex: 0 0 auto;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  padding: 14px 16px;
+  outline: none;
+}
+.palette-input::placeholder {
+  color: var(--text-dim);
+}
+
+.palette-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.palette-empty {
+  padding: 16px;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.palette-item.sel {
+  background: #353042;
+}
+
+.palette-item-main {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.palette-group {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+}
+
+.palette-title {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.palette-hint {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+/* ---- right-click context menu (idea #11) ---- */
+.ctx-menu {
+  position: fixed;
+  z-index: 1200;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--titlebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 7px 9px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ctx-item:hover {
+  background: #353042;
+}
+
+.ctx-label {
+  white-space: nowrap;
+}
+
+.ctx-hint {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* ---- settings panel (idea #3) ---- */
+.settings {
+  align-self: flex-start;
+  margin-top: 8vh;
+  width: min(620px, calc(100vw - 48px));
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--titlebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.settings-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 8px 18px 18px;
+}
+
+.settings-section {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+.settings-h3 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s, transform 0.06s;
+}
+.theme-card:hover {
+  transform: translateY(-1px);
+}
+.theme-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.theme-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.theme-swatches {
+  display: flex;
+  gap: 5px;
+}
+.theme-swatches i {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.settings-row label {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.settings-row select {
+  flex: 0 0 auto;
+  min-width: 200px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stepper button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+}
+.stepper button:hover {
+  border-color: var(--accent);
+}
+.stepper span {
+  min-width: 52px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.font-preview {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.settings-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.shortcut-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 18px;
+}
+
+.shortcut-h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+}
+.shortcut-action {
+  font-size: 13px;
+  color: var(--text);
+}
+.shortcut-kbd {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+/* ---- confirmation modal (close while an agent runs, idea #13) ---- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  width: min(440px, calc(100vw - 48px));
+  background: var(--titlebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.modal-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.modal-body {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.modal-body code {
+  font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  color: var(--accent);
+  background: #2a283340;
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.btn kbd {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 15px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+}
+.btn-ghost:hover {
+  background: #2a2833;
+  color: var(--text);
+}
+
+.btn-danger {
+  background: transparent;
+  border-color: #6e2b33;
+  color: #ff8a8a;
+}
+.btn-danger:hover {
+  background: #3a2227;
+  color: #ffb0b0;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #1a1622;
+}
+.btn-primary:hover {
+  background: #d8bcff;
 }

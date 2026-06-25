@@ -149,49 +149,152 @@ function stackLayout(n: number, focusedIndex: number): Rect[] {
 
 export type Direction = "left" | "right" | "up" | "down";
 
-/** Index of the spatially-nearest visible pane in `dir` from pane `idx`, or -1
- *  if there is none (kitty `neighboring_window`). Picks the closest center
- *  along the travel axis, preferring panes aligned on the perpendicular axis. */
-export function neighbor(rects: Rect[], idx: number, dir: Direction): number {
-  const cur = rects[idx];
-  if (!cur) return -1;
-  const cx = cur.x + cur.w / 2;
-  const cy = cur.y + cur.h / 2;
-  let best = -1;
-  let bestScore = Infinity;
-  for (let i = 0; i < rects.length; i++) {
-    if (i === idx) continue;
-    const r = rects[i];
-    if (r.w === 0 || r.h === 0) continue; // hidden (stack layout)
-    const dx = r.x + r.w / 2 - cx;
-    const dy = r.y + r.h / 2 - cy;
-    let primary: number;
-    let perp: number;
-    if (dir === "left") {
-      if (dx >= -1e-6) continue;
-      primary = -dx;
-      perp = Math.abs(dy);
-    } else if (dir === "right") {
-      if (dx <= 1e-6) continue;
-      primary = dx;
-      perp = Math.abs(dy);
-    } else if (dir === "up") {
-      if (dy >= -1e-6) continue;
-      primary = -dy;
-      perp = Math.abs(dx);
-    } else {
-      if (dy <= 1e-6) continue;
-      primary = dy;
-      perp = Math.abs(dx);
-    }
-    // Travel distance dominates; perpendicular offset only breaks ties.
-    const score = primary + perp * 3;
-    if (score < bestScore) {
-      bestScore = score;
-      best = i;
-    }
+/** For one pane, the candidate neighbor pane indices on each side — a direct
+ *  port of kitty's per-layout `neighbors_for_window`. This is TOPOLOGICAL (it
+ *  reads the pane's position in the flat list, exactly like kitty), NOT a
+ *  geometric scan of the rendered rectangles. That distinction is what makes
+ *  move_window an involution: swapping in one direction and then back picks the
+ *  same partner, because the relation is defined on the list, not on pixels.
+ *  When a side lists several candidates, the caller breaks the tie with
+ *  most-recently-used (kitty `most_recent_group`). */
+export type NeighborsMap = Partial<Record<Direction, number[]>>;
+
+/** Integers [a, b). */
+function range(a: number, b: number): number[] {
+  const xs: number[] = [];
+  for (let i = a; i < b; i++) xs.push(i);
+  return xs;
+}
+
+/** kitty `neighbors_for_tall_window` (tall: mainIsHorizontal; fat: transposed).
+ *  superkitty always runs with one full-size main window. */
+function neighborsTall(
+  idx: number,
+  n: number,
+  mainIsHorizontal: boolean,
+): NeighborsMap {
+  const numFull = 1;
+  const prev = idx === 0 ? -1 : idx - 1;
+  const nxt = idx === n - 1 ? -1 : idx + 1;
+  const mainBefore: Direction = mainIsHorizontal ? "left" : "up";
+  const mainAfter: Direction = mainIsHorizontal ? "right" : "down";
+  const crossBefore: Direction = mainIsHorizontal ? "up" : "left";
+  const crossAfter: Direction = mainIsHorizontal ? "down" : "right";
+  const ans: NeighborsMap = {};
+  if (prev >= 0) ans[mainBefore] = [prev];
+  if (idx < numFull - 1) {
+    if (nxt >= 0) ans[mainAfter] = [nxt];
+  } else if (idx === numFull - 1) {
+    ans[mainAfter] = range(idx + 1, n); // main window: every secondary
+  } else {
+    ans[mainBefore] = [numFull - 1]; // secondary: the main window
+    if (idx > numFull && prev >= 0) ans[crossBefore] = [prev];
+    if (nxt >= 0) ans[crossAfter] = [nxt];
   }
-  return best;
+  return ans;
+}
+
+/** kitty Vertical/Horizontal `neighbors_for_window` — a single line of panes
+ *  that WRAPS at both ends (matches kitty's modular arithmetic). */
+function neighborsLine(
+  idx: number,
+  n: number,
+  mainIsHorizontal: boolean,
+): NeighborsMap {
+  if (n <= 1) return {};
+  const after = [(idx - 1 + n) % n];
+  const before = [(idx + 1) % n];
+  const akey: Direction = mainIsHorizontal ? "left" : "up";
+  const bkey: Direction = mainIsHorizontal ? "right" : "down";
+  return { [akey]: after, [bkey]: before };
+}
+
+/** kitty Stack `neighbors_for_window`: prev pane on top/left, next on
+ *  bottom/right (no wrap). */
+function neighborsStack(idx: number, n: number): NeighborsMap {
+  const before = idx === 0 ? [] : [idx - 1];
+  const after = idx === n - 1 ? [] : [idx + 1];
+  return { up: before, left: before, right: after, down: after };
+}
+
+/** kitty Grid `neighbors_for_window`. Falls back to tall for n < 4, then maps
+ *  the pane's (row, col) onto the column-major grid, spanning differing column
+ *  heights proportionally (kitty's `side` helper). */
+function neighborsGrid(idx: number, n: number): NeighborsMap {
+  if (n < 4) return neighborsTall(idx, n, true);
+  const { ncols, nrows, specialRows, specialCol } = calcGridSize(n);
+  // Column-major fill (same order as gridLayout): record each pane's (row,col)
+  // and how many rows live in each column.
+  const posOf: Array<[number, number]> = [];
+  const colCounts: number[] = [];
+  let p = 0;
+  for (let col = 0; col < ncols; col++) {
+    const rows = col === specialCol ? specialRows : nrows;
+    for (let row = 0; row < rows; row++) posOf[p++] = [row, col];
+    colCounts.push(rows);
+  }
+  const maxRows = Math.max(nrows, specialRows);
+  const matrix: (number | null)[][] = Array.from({ length: maxRows }, () =>
+    new Array<number | null>(ncols).fill(null),
+  );
+  for (let q = 0; q < n; q++) {
+    const [r, c] = posOf[q];
+    matrix[r][c] = q;
+  }
+  const [row, col] = posOf[idx];
+
+  const cell = (r: number, c: number): number[] => {
+    if (r < 0 || r >= matrix.length || c < 0 || c >= ncols) return [];
+    const v = matrix[r][c];
+    return v == null ? [] : [v];
+  };
+  const side = (r: number, c: number, delta: number): number[] => {
+    const nc = c + delta;
+    const neighborNrows = colCounts[nc];
+    const myNrows = colCounts[c];
+    if (neighborNrows === myNrows) return cell(r, nc);
+    const startRow = Math.floor((neighborNrows * r) / myNrows);
+    const endRow = Math.ceil((neighborNrows * (r + 1)) / myNrows);
+    const xs: number[] = [];
+    for (let nr = startRow; nr < endRow; nr++) xs.push(...cell(nr, nc));
+    return xs;
+  };
+
+  const ans: NeighborsMap = {};
+  if (row) ans.up = cell(row - 1, col);
+  const bottom = cell(row + 1, col);
+  if (bottom.length) ans.down = bottom;
+  if (col) {
+    const left = side(row, col, -1);
+    if (left.length) ans.left = left;
+  }
+  if (col < ncols - 1) ans.right = side(row, col, 1);
+  return ans;
+}
+
+/** Candidate neighbor pane indices on each side of pane `idx`, per layout —
+ *  the basis for both `neighboring_window` (focus) and `move_window` (swap). */
+export function neighborsForWindow(
+  name: LayoutName,
+  n: number,
+  idx: number,
+): NeighborsMap {
+  if (idx < 0 || idx >= n) return {};
+  switch (name) {
+    case "stack":
+      return neighborsStack(idx, n);
+    case "horizontal":
+      return neighborsLine(idx, n, true);
+    case "vertical":
+      return neighborsLine(idx, n, false);
+    case "grid":
+      return neighborsGrid(idx, n);
+    case "fat":
+      return neighborsTall(idx, n, false);
+    case "tall":
+    default:
+      return neighborsTall(idx, n, true);
+  }
 }
 
 /** Rectangles (fractions) for every pane, in pane order. */

@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>superkitty — Charte « Phosphore »</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ── Phosphore : AMBRE P3 ───────────────────── */
+    --bg:        #0c0a08;
+    --bg-pane:   #110d09;
+    --amber:     #ffb000;   /* phosphore nominal      */
+    --amber-br:  #ffd277;   /* bright / highlight      */
+    --amber-dim: #b87600;   /* dim / texte secondaire  */
+    --amber-dk:  #6e4700;   /* bordures, rules         */
+    --amber-gho: #3a2600;   /* fantôme, fonds          */
+    --danger:    #ff5a3c;   /* le seul accent non-ambre, parcimonieux */
+    --good:      #ffb000;
+    --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    --crt: 'VT323', var(--mono);
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{ margin:0; padding:0; background:#000; }
+
+  body{
+    font-family:var(--mono);
+    color:var(--amber);
+    font-size:15px;
+    line-height:1.6;
+    letter-spacing:.02em;
+    background:
+      radial-gradient(125% 125% at 50% 50%, #100c08 0%, #0c0a08 55%, #060503 100%);
+    min-height:100vh;
+    overflow-x:hidden;
+    text-shadow:0 0 1px rgba(255,176,0,.35), 0 0 7px rgba(255,176,0,.18);
+  }
+
+  /* ── overlays CRT (scanlines + flicker + sweep + vignette) ── */
+  .crt-overlay{ position:fixed; inset:0; pointer-events:none; z-index:9999; }
+
+  /* scanlines fines */
+  .crt-scanlines{
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,.32) 3px,
+      rgba(0,0,0,.32) 4px);
+    mix-blend-mode:multiply;
+    opacity:.55;
+  }
+  /* masque RGB type aperture-grille très subtil */
+  .crt-mask{
+    background:repeating-linear-gradient(
+      to right,
+      rgba(255,90,0,.05) 0px,
+      rgba(255,176,0,.03) 1px,
+      rgba(0,0,0,.05) 2px,
+      rgba(0,0,0,.05) 3px);
+    mix-blend-mode:screen;
+    opacity:.5;
+  }
+  /* vignette + courbure (lueur interne) */
+  .crt-vignette{
+    background:radial-gradient(120% 120% at 50% 50%,
+      rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 88%, rgba(0,0,0,.92) 100%);
+    box-shadow:
+      inset 0 0 120px rgba(0,0,0,.85),
+      inset 0 0 40px rgba(255,176,0,.05);
+  }
+  /* balayage lumineux qui descend lentement */
+  .crt-sweep{
+    background:linear-gradient(to bottom,
+      rgba(255,210,120,0) 0%,
+      rgba(255,210,120,.07) 48%,
+      rgba(255,210,120,.11) 50%,
+      rgba(255,210,120,.07) 52%,
+      rgba(255,210,120,0) 100%);
+    height:38%;
+    animation:sweep 7.5s linear infinite;
+  }
+  @keyframes sweep{
+    0%{ transform:translateY(-120%); }
+    100%{ transform:translateY(360%); }
+  }
+  /* flicker global */
+  .crt-flicker{ animation:flicker 5.5s steps(1) infinite; background:rgba(255,176,0,.012); }
+  @keyframes flicker{
+    0%,19%,21%,23%,80%,100%{ opacity:.0; }
+    20%{ opacity:.18; }  22%{ opacity:.06; }
+    81%{ opacity:.12; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .crt-sweep,.crt-flicker{ animation:none; }
+    .cursor,.blink{ animation:none; }
+  }
+
+  /* ── courbure : on bombe légèrement le contenu ── */
+  .screen{
+    position:relative;
+    z-index:1;
+    max-width:1060px;
+    margin:0 auto;
+    padding:0 26px 90px;
+  }
+
+  /* ── helpers ── */
+  .dim{ color:var(--amber-dim); text-shadow:0 0 4px rgba(184,118,0,.25); }
+  .br{ color:var(--amber-br); text-shadow:0 0 2px rgba(255,210,120,.5), 0 0 12px rgba(255,176,0,.4); }
+  .danger{ color:var(--danger); text-shadow:0 0 6px rgba(255,90,60,.4); }
+  .label{
+    font-size:12px; letter-spacing:.32em; text-transform:uppercase;
+    color:var(--amber-dim);
+  }
+  a{ color:var(--amber-br); }
+  hr{
+    border:none; border-top:1px dashed var(--amber-dk);
+    margin:0; height:1px;
+  }
+  pre{ margin:0; font-family:var(--mono); }
+  .cursor{
+    display:inline-block; width:.62ch; height:1.05em; vertical-align:-.18em;
+    background:var(--amber-br); margin-left:.15ch;
+    box-shadow:0 0 8px rgba(255,176,0,.8);
+    animation:blink 1.06s steps(1) infinite;
+  }
+  @keyframes blink{ 0%,49%{ opacity:1 } 50%,100%{ opacity:0 } }
+
+  /* ── top boot bar ── */
+  .topbar{
+    border-bottom:1px solid var(--amber-dk);
+    padding:9px 26px;
+    font-size:12.5px;
+    color:var(--amber-dim);
+    display:flex; gap:18px; flex-wrap:wrap; align-items:center;
+    background:rgba(20,14,8,.5);
+    position:relative; z-index:2;
+  }
+  .topbar .br{ font-weight:600; }
+  .ok{ color:var(--bg); background:var(--amber); padding:0 6px; font-weight:700; letter-spacing:.05em; }
+
+  /* ── boot sequence ── */
+  .boot{
+    font-size:13.5px; line-height:1.5; color:var(--amber-dim);
+    padding:18px 0 6px;
+  }
+  .boot .ln{ white-space:pre-wrap; }
+  .boot .tag-ok{ color:var(--amber-br); }
+
+  /* ── HERO ── */
+  .hero{ padding:14px 0 34px; text-align:center; }
+  .ascii-cat{
+    font-family:var(--mono);
+    font-size:12.5px; line-height:1.08;
+    color:var(--amber-br);
+    text-shadow:0 0 3px rgba(255,210,120,.55), 0 0 16px rgba(255,176,0,.45);
+    display:inline-block; text-align:left;
+    white-space:pre;
+  }
+  .wordmark{
+    font-family:var(--crt);
+    font-size:clamp(74px,16vw,170px);
+    line-height:.82;
+    letter-spacing:.02em;
+    color:var(--amber-br);
+    margin:6px 0 0;
+    text-shadow:
+      0 0 2px rgba(255,210,120,.9),
+      0 0 18px rgba(255,176,0,.55),
+      0 0 44px rgba(255,176,0,.32);
+  }
+  .tagline{
+    font-size:clamp(15px,2.4vw,21px);
+    letter-spacing:.12em; text-transform:uppercase;
+    color:var(--amber); margin-top:10px;
+  }
+  .subtag{ color:var(--amber-dim); font-size:14px; margin-top:14px; max-width:640px; margin-left:auto; margin-right:auto; }
+
+  /* ── section frame box-drawing ── */
+  .section{ margin:46px 0; }
+  .sec-head{
+    display:flex; align-items:baseline; gap:14px; margin-bottom:16px;
+    border-bottom:1px solid var(--amber-dk); padding-bottom:8px;
+  }
+  .sec-num{ font-family:var(--crt); font-size:30px; color:var(--amber-br); line-height:1; }
+  .sec-title{ font-size:17px; letter-spacing:.2em; text-transform:uppercase; color:var(--amber); }
+  .sec-path{ margin-left:auto; font-size:12px; color:var(--amber-dim); }
+
+  /* box panel */
+  .panel{
+    border:1px solid var(--amber-dk);
+    background:rgba(17,13,9,.55);
+    padding:20px 22px;
+    position:relative;
+    box-shadow:inset 0 0 30px rgba(255,176,0,.03);
+  }
+  .panel + .panel{ margin-top:18px; }
+
+  /* feature checklist */
+  .feat-list{ list-style:none; margin:0; padding:0; columns:1; }
+  .feat-list li{
+    padding:7px 0; border-bottom:1px dotted var(--amber-gho);
+    display:flex; gap:12px; align-items:flex-start;
+  }
+  .feat-list li:last-child{ border-bottom:none; }
+  .chk{ color:var(--amber-br); font-weight:700; flex:0 0 auto; }
+  .feat-k{ color:var(--amber-br); }
+  .feat-list .kbd{ margin-left:6px; }
+
+  .kbd{
+    font-family:var(--mono); font-size:12px;
+    border:1px solid var(--amber-dk); border-bottom-width:2px;
+    padding:1px 6px; border-radius:3px; color:var(--amber-br);
+    background:rgba(255,176,0,.05); white-space:nowrap;
+    text-shadow:none;
+  }
+
+  /* grid utility */
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  @media(max-width:720px){ .grid2,.grid3{ grid-template-columns:1fr; } }
+
+  /* ── palette / nuancier ── */
+  .swatches{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  .sw{
+    border:1px solid var(--amber-dk); padding:0; overflow:hidden;
+    background:rgba(0,0,0,.3);
+  }
+  .sw .chip{ height:62px; display:block; }
+  .sw .meta{ padding:7px 9px; font-size:11.5px; }
+  .sw .meta b{ display:block; color:var(--amber-br); font-size:12.5px; letter-spacing:.04em; }
+  .sw .meta span{ color:var(--amber-dim); }
+
+  .ansi-row{ display:grid; grid-template-columns:repeat(8,1fr); gap:6px; margin-top:14px; }
+  .ansi-cell{ border:1px solid var(--amber-gho); padding:8px 4px; text-align:center; font-size:11px; color:var(--amber-dim); }
+  .ansi-cell .dot{ display:inline-block; width:14px; height:14px; border-radius:2px; margin-bottom:5px; }
+
+  /* ── typography specimen ── */
+  .spec-row{ padding:13px 0; border-bottom:1px dashed var(--amber-gho); }
+  .spec-row:last-child{ border-bottom:none; }
+  .spec-meta{ font-size:11px; color:var(--amber-dim); letter-spacing:.2em; text-transform:uppercase; margin-bottom:4px; }
+  .spec-vt-xl{ font-family:var(--crt); font-size:62px; line-height:.9; color:var(--amber-br); }
+  .spec-vt-l{ font-family:var(--crt); font-size:38px; line-height:1; color:var(--amber); }
+  .spec-body{ font-size:15px; color:var(--amber); }
+  .spec-small{ font-size:12px; color:var(--amber-dim); }
+  .glyphs{ font-size:18px; letter-spacing:.18em; color:var(--amber-br); word-break:break-all; }
+
+  /* ── components ── */
+  .btn{
+    font-family:var(--mono); font-size:13px;
+    background:transparent; color:var(--amber);
+    border:1px solid var(--amber); padding:8px 16px;
+    cursor:pointer; letter-spacing:.06em; text-transform:uppercase;
+    transition:all .12s; text-shadow:none;
+  }
+  .btn:hover{ background:var(--amber); color:var(--bg); box-shadow:0 0 18px rgba(255,176,0,.5); }
+  .btn.solid{ background:var(--amber); color:var(--bg); border-color:var(--amber); font-weight:600; }
+  .btn.solid:hover{ background:var(--amber-br); border-color:var(--amber-br); }
+  .btn.ghost{ border-color:var(--amber-dk); color:var(--amber-dim); }
+  .btn.ghost:hover{ background:var(--amber-gho); color:var(--amber-br); box-shadow:none; }
+  .btn.danger{ border-color:var(--danger); color:var(--danger); }
+  .btn.danger:hover{ background:var(--danger); color:var(--bg); box-shadow:0 0 18px rgba(255,90,60,.5); }
+  .btn-row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+
+  .field{
+    display:flex; align-items:center; gap:10px;
+    border:1px solid var(--amber-dk); padding:9px 12px;
+    background:rgba(0,0,0,.35);
+  }
+  .field .prompt{ color:var(--amber-br); font-weight:700; }
+  .field input{
+    flex:1; background:transparent; border:none; outline:none;
+    color:var(--amber-br); font-family:var(--mono); font-size:14px;
+    text-shadow:0 0 6px rgba(255,176,0,.4);
+  }
+  .field input::placeholder{ color:var(--amber-dk); }
+
+  .toggle{ display:inline-flex; align-items:center; gap:10px; font-size:13px; color:var(--amber-dim); cursor:pointer; }
+  .toggle .box{ width:38px; height:18px; border:1px solid var(--amber-dk); position:relative; background:rgba(0,0,0,.4); }
+  .toggle .box::after{ content:""; position:absolute; top:1px; left:1px; width:14px; height:14px; background:var(--amber-dim); transition:all .15s; }
+  .toggle input{ display:none; }
+  .toggle input:checked + .box{ border-color:var(--amber); box-shadow:0 0 12px rgba(255,176,0,.4); }
+  .toggle input:checked + .box::after{ left:21px; background:var(--amber-br); box-shadow:0 0 8px rgba(255,176,0,.7); }
+
+  .badge{ display:inline-block; font-size:11px; padding:1px 7px; border:1px solid var(--amber-dk); color:var(--amber-dim); letter-spacing:.1em; text-transform:uppercase; }
+  .badge.live{ color:var(--amber-br); border-color:var(--amber); animation:pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1 } 50%{ opacity:.45 } }
+
+  /* ── ASCII windows (box drawing) ── */
+  .ascii-box{
+    font-family:var(--mono); font-size:13px; line-height:1.35;
+    white-space:pre; color:var(--amber); overflow-x:auto;
+  }
+  .ascii-box .title{ color:var(--amber-br); }
+  .ascii-box .muted{ color:var(--amber-dim); }
+  .ascii-box .acc{ color:var(--amber-br); }
+
+  /* claude session mock */
+  .term{
+    border:1px solid var(--amber-dk);
+    background:rgba(8,6,4,.7);
+    box-shadow:inset 0 0 40px rgba(255,176,0,.04);
+  }
+  .term-chrome{
+    display:flex; align-items:center; gap:8px;
+    padding:7px 12px; border-bottom:1px solid var(--amber-dk);
+    font-size:12px; color:var(--amber-dim);
+  }
+  .lights{ display:flex; gap:6px; }
+  .lights i{ width:11px; height:11px; border-radius:50%; display:block; border:1px solid var(--amber-dk); }
+  .lights i.r{ background:#3a1a12; } .lights i.y{ background:#3a2a08; } .lights i.g{ background:var(--amber-gho); }
+  .term-body{ padding:16px 18px; font-size:13.5px; line-height:1.55; }
+  .term-body .you{ color:var(--amber-br); }
+  .term-body .cc{ color:var(--amber); }
+  .term-body .sys{ color:var(--amber-dim); }
+  .term-body .tool{ color:var(--amber-dim); }
+  .term-body .ok{ background:none; color:var(--amber-br); padding:0; font-weight:600; }
+
+  /* layouts demo */
+  .layouts{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  @media(max-width:720px){ .layouts{ grid-template-columns:1fr 1fr; } }
+  @media(max-width:460px){ .layouts{ grid-template-columns:1fr; } }
+  .layout-card{ border:1px solid var(--amber-dk); padding:12px; text-align:center; }
+  .layout-card .name{ font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--amber-br); margin-top:8px; }
+  .layout-card .lp{ font-family:var(--mono); font-size:11px; line-height:1.15; white-space:pre; color:var(--amber); }
+
+  /* ── tmux status bar (footer) ── */
+  .tmux{
+    position:sticky; bottom:0; z-index:50;
+    display:flex; align-items:center; gap:0;
+    font-size:12.5px; background:var(--amber); color:var(--bg);
+    border-top:2px solid var(--amber-br);
+    text-shadow:none; letter-spacing:.02em;
+    box-shadow:0 -4px 24px rgba(255,176,0,.25);
+  }
+  .tmux .seg{ padding:5px 12px; }
+  .tmux .left{ background:var(--bg); color:var(--amber-br); font-weight:700; }
+  .tmux .win{ }
+  .tmux .win.cur{ background:var(--bg); color:var(--amber-br); font-weight:700; }
+  .tmux .spacer{ flex:1; }
+  .tmux .right{ background:var(--bg); color:var(--amber-dim); }
+
+  /* footer */
+  footer{ margin-top:54px; padding-top:24px; border-top:1px solid var(--amber-dk); color:var(--amber-dim); font-size:12.5px; }
+  footer .big{ font-family:var(--crt); font-size:40px; color:var(--amber-br); line-height:1; }
+  footer .cols{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:20px; margin-top:18px; }
+
+  /* small reveal of the "what it does" intro line */
+  .lede{ font-size:16px; color:var(--amber); max-width:760px; }
+  .lede .br{ font-weight:600; }
+
+  ::selection{ background:var(--amber); color:var(--bg); text-shadow:none; }
+</style>
+</head>
+<body>
+
+<!-- ── overlays CRT ─────────────────────────────── -->
+<div class="crt-overlay crt-mask"></div>
+<div class="crt-overlay crt-scanlines"></div>
+<div class="crt-overlay crt-flicker"></div>
+<div class="crt-overlay" style="overflow:hidden;"><div class="crt-sweep"></div></div>
+<div class="crt-overlay crt-vignette"></div>
+
+<!-- ── top status / fake OSC ────────────────────── -->
+<div class="topbar">
+  <span class="br">superkitty</span>
+  <span class="dim">tty/000</span>
+  <span class="dim">|</span>
+  <span class="dim">phosphore P3 · ambre</span>
+  <span class="dim">|</span>
+  <span class="dim">OSC 0 ;</span><span>charte graphique</span><span class="dim">BEL</span>
+  <span style="margin-left:auto" class="dim">90×30 · UTF-8 · <span class="ok">LIVE</span></span>
+</div>
+
+<div class="screen">
+
+  <!-- ── boot sequence ── -->
+  <div class="boot">
+<pre class="ln"><span class="dim">superkitty v0.1.0 — terminal macOS dédié à Claude Code</span>
+<span class="dim">© 2026 · « un vrai terminal comme kitty, mais qui ne meurt jamais »</span>
+
+[0.001] initializing PTY (portable-pty)................... <span class="tag-ok">[ OK ]</span>
+[0.014] resolving $SHELL -l ............................... <span class="tag-ok">[ OK ]</span>
+[0.022] spawning tmux new-session -A -D -s superkitty-p1 .. <span class="tag-ok">[ OK ]</span>
+[0.041] attaching tmux server (sessions survive close).... <span class="tag-ok">[ OK ]</span>
+[0.058] registering global Quake hotkey  ⌃` ............... <span class="tag-ok">[ OK ]</span>
+[0.061] mounting xterm.js + fit/web-links addons ......... <span class="tag-ok">[ OK ]</span>
+[0.077] restoring layout from localStorage (tall) ........ <span class="tag-ok">[ OK ]</span>
+[0.090] superkitty ready — 9 lives remaining <span class="cursor"></span></pre>
+  </div>
+
+  <!-- ── HERO ── -->
+  <section class="hero">
+<pre class="ascii-cat">    ╱|、       ╱|、
+  (˚ˎ 。7    (˚ˎ 。7      ┌──────────────────┐
+   |、˜〵     |、˜〵      │  superkitty      │
+   じしˍ,)ノ  じしˍ,)ノ   │  ~ neuf vies ~   │
+                          └──────────────────┘</pre>
+    <h1 class="wordmark">superkitty</h1>
+    <div class="tagline">Le terminal de Claude Code</div>
+    <p class="subtag">
+      Un vrai terminal macOS — vrai PTY, n'importe quel shell — pensé
+      <span class="br">friction-first</span> pour vivre avec un agent qui tourne.
+      Ferme la fenêtre : la session ne s'éteint pas.
+    </p>
+    <div class="btn-row" style="justify-content:center; margin-top:24px;">
+      <button class="btn solid">▸ Lancer une session</button>
+      <button class="btn">⌘K — Palette</button>
+      <button class="btn ghost">man superkitty</button>
+    </div>
+  </section>
+
+  <!-- ── 00 · CE QUE ÇA FAIT ── -->
+  <section class="section">
+    <div class="sec-head">
+      <span class="sec-num">00</span>
+      <span class="sec-title">Ce que ça fait</span>
+      <span class="sec-path">/usr/share/man/superkitty.1</span>
+    </div>
+    <p class="lede">
+      kitty est un chat. <span class="br">superkitty</span> en est la version à neuf vies :
+      chaque terminal est adossé à une session <span class="br">tmux</span>, donc le run Claude
+      vit dans le serveur tmux, pas dans la fenêtre. Tu fermes, tu rouvres — le run continue.
+    </p>
+    <div class="panel" style="margin-top:18px;">
+      <ul class="feat-list">
+        <li><span class="chk">[x]</span><span><span class="feat-k">Sessions persistantes.</span> Adossées à <span class="br">tmux new-session -A -D</span> : fermer la fenêtre détache, ne tue jamais. Rouvrir réattache le run Claude vivant <span class="dim">+ tout le scrollback</span>.</span></li>
+        <li><span class="chk">[x]</span><span><span class="feat-k">Onglets &amp; panes.</span> Layouts façon kitty — <span class="br">tall · fat · grid · horizontal · vertical · stack</span> — recalculés et auto-équilibrés à chaque ajout/fermeture.</span></li>
+        <li><span class="chk">[x]</span><span><span class="feat-k">Drag &amp; drop d'images.</span> Le chemin est injecté en <span class="dim">bracketed-paste</span> → Claude affiche <span class="br">[Image #1]</span>. Idem pour le coller d'image <span class="kbd">⌘V</span>.</span></li>
+        <li><span class="chk">[x]</span><span><span class="feat-k">Palette de commandes.</span> Fuzzy, toutes les actions + sessions tmux. <span class="kbd">⌘K</span></span></li>
+        <li><span class="chk">[x]</span><span><span class="feat-k">Sélecteur de fichiers</span> git-aware <span class="kbd">⌘P</span>, <span class="feat-k">compositeur de prompt</span> multi-ligne <span class="kbd">⌘E</span>, <span class="feat-k">bloc-notes</span> par onglet <span class="kbd">⌃⇧N</span>.</span></li>
+        <li><span class="chk">[x]</span><span><span class="feat-k">Sidebar de sessions.</span> Liste/attache toutes les sessions tmux. <span class="kbd">⌘B</span></span></li>
+        <li><span class="chk">[x]</span><span><span class="feat-k">Dropdown Quake global.</span> Depuis n'importe quelle app : choisis un projet, tape, <span class="kbd">↵</span>. <span class="kbd">⌃`</span></span></li>
+        <li><span class="chk">[x]</span><span><span class="feat-k">Notifications agent-fini.</span> Détectées sur le <span class="br">BEL</span>, notif macOS native quand Claude a terminé.</span></li>
+        <li><span class="chk">[x]</span><span><span class="feat-k">Sandbox par pane.</span> Écritures confinées au dossier projet <span class="dim">(profil Seatbelt, lectures ouvertes)</span>.</span></li>
+        <li><span class="chk">[x]</span><span><span class="feat-k">Rouvrir un pane/onglet fermé.</span> Réattache la session vivante ou recrée l'onglet à l'identique. <span class="kbd">⌘⇧T</span></span></li>
+        <li><span class="dim">[~]</span><span class="dim">Poignées de redimensionnement draggables — layouts auto-équilibrés pour l'instant.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ── 01 · PALETTE PHOSPHORE ── -->
+  <section class="section">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <span class="sec-title">Palette · Phosphore P3</span>
+      <span class="sec-path">--amber · une seule teinte</span>
+    </div>
+    <p class="dim" style="margin-top:0">
+      Une seule teinte dominante — l'<span class="br">ambre P3</span> — déclinée en bright/dim/dark sur fond
+      quasi-noir. Discipline volontaire : presque aucune couleur, comme un vrai tube monochrome.
+    </p>
+    <div class="swatches">
+      <div class="sw"><span class="chip" style="background:#0c0a08"></span><div class="meta"><b>bg</b><span>#0c0a08 · fond tube</span></div></div>
+      <div class="sw"><span class="chip" style="background:#110d09"></span><div class="meta"><b>bg-pane</b><span>#110d09 · pane</span></div></div>
+      <div class="sw"><span class="chip" style="background:#3a2600"></span><div class="meta"><b>amber-ghost</b><span>#3a2600 · fantôme</span></div></div>
+      <div class="sw"><span class="chip" style="background:#6e4700"></span><div class="meta"><b>amber-dark</b><span>#6e4700 · bordures</span></div></div>
+      <div class="sw"><span class="chip" style="background:#b87600"></span><div class="meta"><b>amber-dim</b><span>#b87600 · secondaire</span></div></div>
+      <div class="sw"><span class="chip" style="background:#ffb000; box-shadow:0 0 22px rgba(255,176,0,.6) inset"></span><div class="meta"><b>amber</b><span>#ffb000 · nominal</span></div></div>
+      <div class="sw"><span class="chip" style="background:#ffd277; box-shadow:0 0 22px rgba(255,210,120,.7) inset"></span><div class="meta"><b>amber-bright</b><span>#ffd277 · highlight</span></div></div>
+      <div class="sw"><span class="chip" style="background:#ff5a3c"></span><div class="meta"><b>danger</b><span>#ff5a3c · alerte seule</span></div></div>
+    </div>
+
+    <div class="label" style="margin-top:24px;">Mapping ANSI 16 · monochromé vers l'ambre</div>
+    <div class="ansi-row">
+      <div class="ansi-cell"><span class="dot" style="background:#1a130a"></span>0 black</div>
+      <div class="ansi-cell"><span class="dot" style="background:#8a3a1e"></span>1 red</div>
+      <div class="ansi-cell"><span class="dot" style="background:#b87600"></span>2 green</div>
+      <div class="ansi-cell"><span class="dot" style="background:#ffb000"></span>3 yellow</div>
+      <div class="ansi-cell"><span class="dot" style="background:#6e4700"></span>4 blue</div>
+      <div class="ansi-cell"><span class="dot" style="background:#c98a2a"></span>5 magenta</div>
+      <div class="ansi-cell"><span class="dot" style="background:#d99a1e"></span>6 cyan</div>
+      <div class="ansi-cell"><span class="dot" style="background:#ffd277"></span>7 white</div>
+    </div>
+    <div class="ansi-row" style="margin-top:6px;">
+      <div class="ansi-cell"><span class="dot" style="background:#3a2600"></span>8 br-black</div>
+      <div class="ansi-cell"><span class="dot" style="background:#ff5a3c"></span>9 br-red</div>
+      <div class="ansi-cell"><span class="dot" style="background:#ffc94a"></span>10 br-green</div>
+      <div class="ansi-cell"><span class="dot" style="background:#ffe2a0"></span>11 br-yellow</div>
+      <div class="ansi-cell"><span class="dot" style="background:#b87600"></span>12 br-blue</div>
+      <div class="ansi-cell"><span class="dot" style="background:#ffd277"></span>13 br-mag</div>
+      <div class="ansi-cell"><span class="dot" style="background:#ffe2a0"></span>14 br-cyan</div>
+      <div class="ansi-cell"><span class="dot" style="background:#fff2d6"></span>15 br-white</div>
+    </div>
+  </section>
+
+  <!-- ── 02 · TYPOGRAPHIE ── -->
+  <section class="section">
+    <div class="sec-head">
+      <span class="sec-num">02</span>
+      <span class="sec-title">Spécimen typographique</span>
+      <span class="sec-path">VT323 · IBM Plex Mono</span>
+    </div>
+    <div class="panel">
+      <div class="spec-row">
+        <div class="spec-meta">VT323 · display / wordmark · 62px</div>
+        <div class="spec-vt-xl">SUPERKITTY 0123</div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-meta">VT323 · titres de section · 38px</div>
+        <div class="spec-vt-l">attaching tmux server…</div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-meta">IBM Plex Mono · corps · 15px / 1.6</div>
+        <div class="spec-body">La session ne meurt jamais : fermer la fenêtre détache le PTY, le serveur tmux garde le run Claude vivant. <span class="dim">Rouvrir avec le même id réattache le scrollback et l'état.</span></div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-meta">IBM Plex Mono · code · 13px</div>
+        <div class="spec-body"><pre>tmux new-session -A -D -s superkitty-p1  <span class="dim"># attach-or-create, detach-others</span>
+<span class="dim">→</span> $SHELL -l  <span class="dim"># login shell neuf à la création</span></pre></div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-meta">Glyphes &amp; box-drawing</div>
+        <div class="glyphs">A a B b 0 1 2 3 4 5 6 7 8 9 → ← ↑ ↓ ⌘ ⌥ ⌃ ⇧ ↵ ┌ ─ ┐ │ └ ┘ ├ ┤ ▦ ▸ ✓ ✗ ★ ‹›</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 03 · COMPOSANTS ── -->
+  <section class="section">
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <span class="sec-title">Composants</span>
+      <span class="sec-path">~/.superkitty/ui</span>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="label">Boutons</div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn solid">Nouveau pane</button>
+          <button class="btn">⌘B Sessions</button>
+          <button class="btn ghost">Détacher</button>
+        </div>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn danger">⌘W Tuer l'onglet</button>
+          <button class="btn">⌃⇧Z Zoom</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="label">Champ · prompt</div>
+        <div class="field" style="margin-top:14px;">
+          <span class="prompt">&gt;</span>
+          <input type="text" placeholder="tape une commande, glisse une image…" value="claude --resume">
+          <span class="cursor" style="height:.95em"></span>
+        </div>
+        <div class="field" style="margin-top:12px;">
+          <span class="prompt" style="color:var(--amber-dim)">⌘K</span>
+          <input type="text" placeholder="rechercher une action ou une session…">
+        </div>
+        <div style="margin-top:16px; display:flex; gap:22px; align-items:center;">
+          <label class="toggle"><input type="checkbox" checked><span class="box"></span>Notifications BEL</label>
+          <label class="toggle"><input type="checkbox"><span class="box"></span>Sandbox</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid3" style="margin-top:18px;">
+      <div class="panel"><div class="label">Badges</div>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+          <span class="badge live">● agent</span>
+          <span class="badge">détaché</span>
+          <span class="badge">sandbox</span>
+          <span class="badge">tmux</span>
+        </div>
+      </div>
+      <div class="panel"><div class="label">Raccourcis</div>
+        <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
+          <span class="kbd">⌘T</span><span class="kbd">⌘P</span><span class="kbd">⌘E</span><span class="kbd">⌘⇧T</span><span class="kbd">⌃⇧L</span><span class="kbd">⌃`</span>
+        </div>
+      </div>
+      <div class="panel"><div class="label">État session</div>
+        <div style="margin-top:12px;" class="spec-small">
+          <div><span class="br">●</span> superkitty-p1 <span class="dim">attaché</span></div>
+          <div><span class="dim">○</span> superkitty-p2 <span class="dim">détaché</span></div>
+          <div><span class="dim">○</span> dev-server <span class="dim">externe</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- pane window en box-drawing -->
+    <div class="panel" style="margin-top:18px;">
+      <div class="label">Fenêtre de pane · dessinée en box-drawing</div>
+      <pre class="ascii-box" style="margin-top:12px;"><span class="muted">┌─</span><span class="title"> superkitty-p1 ── claude </span><span class="muted">───────────────[ ⌃⇧Z ]──[ × ]─┐</span>
+<span class="muted">│</span>  <span class="acc">&gt;</span> claude                                              <span class="muted">│</span>
+<span class="muted">│</span>  <span class="dim">● réfléchit…  tool: Read(src/pty.rs)            42 tok/s</span>  <span class="muted">│</span>
+<span class="muted">│</span>                                                       <span class="muted">│</span>
+<span class="muted">│</span>  <span class="acc">⏵</span> Edit(src/Terminal.tsx) <span class="acc">[✓]</span>                          <span class="muted">│</span>
+<span class="muted">│</span>  <span class="acc">⏵</span> Bash(cargo check) <span class="acc">[✓]</span>                               <span class="muted">│</span>
+<span class="muted">├─</span><span class="muted">────────────────────────────────────────────────────</span><span class="muted">┤</span>
+<span class="muted">│</span> <span class="dim">[superkitty] 0:claude* 1:shell   tall   p1·attaché</span>     <span class="muted">│</span>
+<span class="muted">└──────────────────────────────────────────────────────┘</span></pre>
+    </div>
+  </section>
+
+  <!-- ── 04 · LAYOUTS ── -->
+  <section class="section">
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <span class="sec-title">Panes &amp; layouts</span>
+      <span class="sec-path">src/layouts.ts · ⌃⇧L</span>
+    </div>
+    <p class="dim" style="margin-top:0">Chaque layout est une fonction pure <span class="br">(n, focus) → Rect[]</span> portée de kitty. Tout est recalculé à chaque ajout/fermeture — rien ne s'empile.</p>
+    <div class="layouts">
+      <div class="layout-card">
+<pre class="lp">┌────┬──┐
+│    ├──┤
+│    ├──┤
+└────┴──┘</pre>
+        <div class="name">tall ★</div>
+      </div>
+      <div class="layout-card">
+<pre class="lp">┌──────┐
+├──┬──┬─┤
+│  │  │ │
+└──┴──┴─┘</pre>
+        <div class="name">fat</div>
+      </div>
+      <div class="layout-card">
+<pre class="lp">┌──┬──┐
+│  │  │
+├──┼──┤
+└──┴──┘</pre>
+        <div class="name">grid</div>
+      </div>
+      <div class="layout-card">
+<pre class="lp">┌──────┐
+├──────┤
+├──────┤
+└──────┘</pre>
+        <div class="name">horizontal</div>
+      </div>
+      <div class="layout-card">
+<pre class="lp">┌─┬─┬─┬┐
+│ │ │ ││
+│ │ │ ││
+└─┴─┴─┴┘</pre>
+        <div class="name">vertical</div>
+      </div>
+      <div class="layout-card">
+<pre class="lp">┌──────┐
+│┌────┐│
+││ ▦  ││
+└└────┘┘</pre>
+        <div class="name">stack</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 05 · SESSION CLAUDE LIVE ── -->
+  <section class="section">
+    <div class="sec-head">
+      <span class="sec-num">05</span>
+      <span class="sec-title">Une session qui tourne</span>
+      <span class="sec-path">pty://output/p1</span>
+    </div>
+    <div class="term">
+      <div class="term-chrome">
+        <span class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></span>
+        <span style="margin-left:6px">superkitty · ~/Dev/superkitty · </span>
+        <span class="br">claude</span>
+        <span style="margin-left:auto" class="badge live">● agent en cours</span>
+      </div>
+      <div class="term-body">
+<pre><span class="sys">$ tmux new-session -A -D -s superkitty-p1 → réattaché (run vivant)</span>
+
+<span class="you">&gt; tu peux ajouter le scroll vers le prompt précédent ?</span>
+
+<span class="cc">  Je vais utiliser les marques OSC 133. Je regarde pty.rs d'abord.</span>
+<span class="tool">  ⏵ Read(src-tauri/src/pty.rs)            <span class="ok">✓ 214 lignes</span></span>
+<span class="tool">  ⏵ Edit(src-tauri/src/pty.rs)            <span class="ok">✓ +18 −2</span></span>
+<span class="tool">  ⏵ Edit(src/App.tsx)                     <span class="ok">✓ +9 −0</span></span>
+<span class="tool">  ⏵ Bash(cargo check)                     <span class="ok">✓ Finished in 3.4s</span></span>
+
+<span class="cc">  C'est bon : ⌥⌘↑ / ⌥⌘↓ sautent de prompt en prompt via les marques.</span>
+<span class="sys">  🔔 BEL → notification macOS « Claude a terminé » envoyée.</span>
+
+<span class="you">&gt; </span><span class="cursor"></span></pre>
+      </div>
+    </div>
+    <p class="spec-small dim" style="margin-top:10px;">
+      Ferme cette fenêtre maintenant : le run continue dans tmux. <span class="br">⌘⇧T</span> ou un clic dans la sidebar le réattache, scrollback intact.
+    </p>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer>
+    <div class="big">superkitty</div>
+    <div class="cols">
+      <div>
+        <div class="label">Le produit</div>
+        <div class="spec-small dim" style="margin-top:8px; max-width:320px">
+          Terminal macOS dédié à Claude Code. Tauri 2 · Rust + React/TypeScript · xterm.js · tmux · portable-pty.
+          Construit friction-first, macOS only.
+        </div>
+      </div>
+      <div>
+        <div class="label">Charte</div>
+        <div class="spec-small dim" style="margin-top:8px;">
+          Direction « Phosphore »<br>
+          Teinte : ambre P3 #ffb000<br>
+          VT323 + IBM Plex Mono<br>
+          v0.1 · 2026
+        </div>
+      </div>
+      <div>
+        <div class="label">Neuf vies</div>
+        <div class="spec-small" style="margin-top:8px;">
+          <span class="br">★ ★ ★ ★ ★ ★ ★ ★ ★</span><br>
+          <span class="dim">la session ne meurt jamais</span>
+        </div>
+      </div>
+    </div>
+    <div class="spec-small dim" style="margin-top:26px; text-align:center;">
+      <span class="cursor" style="height:.85em"></span> EOF — <span class="br">superkitty</span> · charte graphique Phosphore · presse une touche pour continuer_
+    </div>
+  </footer>
+
+</div>
+
+<!-- ── tmux status bar collée en bas ── -->
+<div class="tmux">
+  <span class="seg left">[superkitty]</span>
+  <span class="seg win cur">0:claude*</span>
+  <span class="seg win">1:shell</span>
+  <span class="seg win">2:dev-server</span>
+  <span class="seg win">3:notes-</span>
+  <span class="spacer"></span>
+  <span class="seg right">tall · 4 panes</span>
+  <span class="seg right">⌃` quake</span>
+  <span class="seg right">25-06-2026 14:09</span>
+</div>
+
+<script>
+  // petit clin d'œil : horloge live dans la status bar tmux (JS inline, facultatif)
+  (function(){
+    var el = document.querySelectorAll('.tmux .right');
+    var clock = el[el.length-1];
+    function pad(n){ return (n<10?'0':'')+n; }
+    function tick(){
+      var d = new Date();
+      clock.textContent = pad(d.getDate())+'-'+pad(d.getMonth()+1)+'-'+d.getFullYear()
+        +' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    }
+    tick(); setInterval(tick, 1000);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>superkitty — Charte graphique (iMac translucide, couleurs maison)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   superkitty — Charte graphique « iMac translucide » (1998–2001)
+   Verre dépoli / candy givré + héro « Bondi blue » + Aqua-lite
+   Variante sœur de « Apple Rainbow » : même ADN typographique,
+   matière translucide au lieu du Platinum beige.
+   ============================================================ */
+
+:root {
+  /* —— Ruban six-couleurs candy translucide « superkitty » (haut → bas) —— */
+  /* teintes bonbon givrées, distinctes des hexes Apple */
+  --rb-green:  #8FC04E;  /* citron vert */
+  --rb-yellow: #F0C34E;  /* miel (variation chaude pour le ruban) */
+  --rb-orange: #F0944E;  /* mandarine */
+  --rb-red:    #E2607E;  /* fraise */
+  --rb-purple: #9B6FB0;  /* raisin */
+  --rb-blue:   #5A6FC0;  /* myrtille */
+
+  /* —— Héro & déclinaisons candy —— */
+  --bondi:      #2E9FB0;  /* HÉRO — Bondi blue maison */
+  --bondi-lt:   #6FC4D1;
+  --bondi-dk:   #1E7E8E;
+  --tangerine:  #F0944E;  /* mandarine */
+  --strawberry: #E2607E;  /* fraise */
+  --grape:      #9B6FB0;  /* raisin */
+  --lime:       #8FC04E;  /* citron vert */
+  --blueberry:  #5A6FC0;  /* myrtille */
+
+  /* —— Blancs givrés / gris perle (neutres) —— */
+  --frost:      #F4FAFB;  /* blanc givré bleuté */
+  --frost-2:    #E9F2F4;
+  --pearl:      #DCE6E9;  /* gris perle */
+  --pearl-dk:   #BFCDD2;
+  --ink:        #243A40;  /* encre bleu-ardoise */
+  --ink-soft:   #4E6B72;
+  --ink-faint:  #8AA1A7;
+
+  /* —— Verre (surfaces translucides) —— */
+  --glass:      rgba(255,255,255,.55);
+  --glass-2:    rgba(255,255,255,.38);
+  --glass-edge: rgba(255,255,255,.85);
+  --glass-line: rgba(46,159,176,.18);
+
+  /* —— Terminal (sombre, cadre translucide) —— */
+  --term-bg:  #142329;
+  --term-fg:  #E7F1F2;
+  --term-dim: #7FA0A6;
+
+  /* —— Typo —— */
+  --brand: "EB Garamond", "Apple Garamond", Garamond, "Times New Roman", serif;
+  --pixel: "Silkscreen", "Chicago", monospace;
+  --mono:  Monaco, "Cascadia Mono", "SF Mono", Menlo, monospace;
+
+  --radius: 18px;
+  --radius-lg: 26px;
+  --shadow-soft: 0 18px 50px rgba(46,159,176,.16), 0 4px 14px rgba(36,58,64,.10);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: var(--brand);
+  color: var(--ink);
+  background-color: var(--frost);
+  /* pinstripes Aqua très claires + halos candy diffus */
+  background-image:
+    repeating-linear-gradient(0deg,
+      rgba(255,255,255,.55) 0px, rgba(255,255,255,.55) 1px,
+      transparent 1px, transparent 5px),
+    radial-gradient(1100px 620px at 82% -8%, rgba(46,159,176,.18), transparent 62%),
+    radial-gradient(900px 520px at -8% 18%, rgba(155,111,176,.12), transparent 60%),
+    radial-gradient(1000px 700px at 50% 118%, rgba(143,192,78,.12), transparent 62%);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+/* léger voile lumineux diffus (verre dépoli) */
+body::after {
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 9999;
+  background: radial-gradient(1400px 700px at 50% -20%, rgba(255,255,255,.35), transparent 55%);
+}
+
+/* ===== Menu bar Aqua-lite ===== */
+.menubar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 22px;
+  height: 32px; padding: 0 16px;
+  background: linear-gradient(rgba(255,255,255,.78), rgba(233,242,244,.62));
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  backdrop-filter: saturate(160%) blur(14px);
+  border-bottom: 1px solid var(--glass-line);
+  box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 4px 14px rgba(46,159,176,.10);
+  font-family: var(--pixel);
+  font-size: 9px; letter-spacing: .3px;
+  color: var(--ink);
+}
+.menubar .mark { width: 18px; height: 18px; }
+.menubar .mb { opacity: .82; }
+.menubar .mb.active { font-weight: 700; opacity: 1; }
+.menubar .clock { margin-left: auto; opacity: .65; }
+
+/* ===== Layout ===== */
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px 130px; }
+section { margin-top: 78px; }
+
+/* ===== Reveal ===== */
+.reveal { opacity: 0; transform: translateY(14px); animation: rise .7s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+
+/* ===== Hero ===== */
+.hero { text-align: center; padding-top: 70px; }
+.hero .logo { width: 118px; height: 118px; margin: 0 auto 26px; display: block;
+  filter: drop-shadow(0 10px 18px rgba(46,159,176,.30)); }
+.hero h1 {
+  font-family: var(--brand); font-weight: 500; font-style: italic;
+  font-size: clamp(58px, 11vw, 132px); line-height: .9; margin: 0;
+  letter-spacing: -.5px;
+  background: linear-gradient(100deg,
+    var(--lime) 0%, var(--rb-yellow) 18%, var(--tangerine) 38%,
+    var(--strawberry) 58%, var(--grape) 78%, var(--bondi) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hero .kicker {
+  font-family: var(--pixel); font-size: 11px; letter-spacing: 4px;
+  text-transform: uppercase; color: var(--bondi-dk); margin-bottom: 10px;
+}
+.hero .tag { font-size: 22px; color: var(--ink-soft); font-style: italic; margin-top: 16px; }
+
+/* ===== Ruban arc-en-ciel translucide ===== */
+.stripe {
+  height: 24px; border-radius: 8px; overflow: hidden;
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  position: relative;
+  box-shadow: var(--shadow-soft), 0 0 0 1px var(--glass-edge) inset;
+  margin: 38px auto; max-width: 540px;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.stripe i { display: block; opacity: .82; }
+/* reflet glossy par-dessus le ruban (Aqua) */
+.stripe::after { content:""; position:absolute; inset:0 0 50% 0;
+  background: linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,0));
+  pointer-events:none; }
+.stripe .c1 { background: var(--rb-green); }
+.stripe .c2 { background: var(--rb-yellow); }
+.stripe .c3 { background: var(--rb-orange); }
+.stripe .c4 { background: var(--rb-red); }
+.stripe .c5 { background: var(--rb-purple); }
+.stripe .c6 { background: var(--rb-blue); }
+
+/* filet arc-en-ciel translucide */
+.rule { height: 5px; border: 0; margin: 0; border-radius: 3px; opacity: .9;
+  background: linear-gradient(90deg,
+    var(--rb-green), var(--rb-yellow), var(--rb-orange),
+    var(--rb-red), var(--rb-purple), var(--rb-blue)); }
+
+/* ===== Titres de section ===== */
+.sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+.sec-num { font-family: var(--pixel); font-size: 10px; color: var(--bondi-dk);
+  border: 1.5px solid var(--bondi); border-radius: 6px; padding: 3px 6px;
+  background: rgba(46,159,176,.10); }
+h2 { font-family: var(--brand); font-style: italic; font-weight: 500;
+  font-size: 38px; margin: 0; letter-spacing: -.3px; color: var(--ink); }
+.sec-desc { color: var(--ink-soft); max-width: 62ch; margin: 6px 0 26px; font-size: 17px; }
+
+/* ===== Panneau de verre dépoli ===== */
+.panel {
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(150%) blur(16px);
+  backdrop-filter: saturate(150%) blur(16px);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.9) inset,
+    0 -20px 40px rgba(255,255,255,.18) inset,
+    var(--shadow-soft);
+  padding: 26px;
+}
+
+/* ===== Palette ===== */
+.grid-pal { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+.sw { border-radius: 16px; overflow: hidden;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--shadow-soft); }
+.sw .chip { height: 82px; position: relative; }
+/* highlight glossy translucide sur chaque pastille */
+.sw .chip::after { content:""; position:absolute; inset:0 0 55% 0;
+  background: linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,0)); }
+.sw .meta { padding: 9px 11px; font-family: var(--mono); font-size: 11px; }
+.sw .meta b { display: block; font-family: var(--brand); font-size: 13px; font-style: italic;
+  font-weight: 600; margin-bottom: 2px; color: var(--ink); }
+.sw .meta span { color: var(--ink-soft); }
+.sw.hero-sw { grid-column: span 2; }
+.sw.hero-sw .chip { height: 110px; }
+
+.grid-neutral { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr));
+  gap: 14px; margin-top: 18px; }
+
+/* ===== Typo specimen ===== */
+.type-row { display: grid; grid-template-columns: 130px 1fr; gap: 20px; align-items: baseline;
+  padding: 18px 0; border-bottom: 1px solid var(--glass-line); }
+.type-row:last-child { border-bottom: 0; }
+.type-label { font-family: var(--pixel); font-size: 10px; color: var(--ink-soft);
+  letter-spacing: 1px; line-height: 1.7; }
+.type-label span { display: block; color: var(--ink-faint); }
+.t-brand { font-family: var(--brand); }
+.t-mono  { font-family: var(--mono); }
+.t-pixel { font-family: var(--pixel); }
+
+/* ===== Composants : boutons Aqua gélule ===== */
+.controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+
+.btn {
+  position: relative;
+  font-family: var(--brand); font-size: 16px; color: var(--ink);
+  padding: 10px 22px; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(rgba(255,255,255,.95), rgba(220,230,233,.85));
+  border: 1px solid rgba(46,159,176,.35);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.95) inset,
+    0 -8px 12px rgba(46,159,176,.06) inset,
+    0 6px 14px rgba(36,58,64,.14);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  transition: transform .06s, box-shadow .06s, filter .12s;
+  overflow: hidden;
+}
+/* highlight blanc en haut (gloss Aqua) */
+.btn::before { content:""; position:absolute; left:6%; right:6%; top:3px; height:42%;
+  border-radius: 999px;
+  background: linear-gradient(rgba(255,255,255,.9), rgba(255,255,255,0));
+  pointer-events:none; }
+.btn:hover { filter: brightness(1.04); }
+.btn:active { transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(36,58,64,.25) inset; }
+
+/* gélule Bondi (action par défaut) */
+.btn-default { color: #fff; font-weight: 600; padding: 11px 28px;
+  border: 1px solid var(--bondi-dk);
+  background: linear-gradient(var(--bondi-lt), var(--bondi) 52%, var(--bondi-dk));
+  text-shadow: 0 1px 1px rgba(0,0,0,.22);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.7) inset,
+    0 6px 16px rgba(46,159,176,.40); }
+
+/* gélule arc-en-ciel candy */
+.btn-rb { color: #fff; font-weight: 600; border: 1px solid rgba(255,255,255,.5);
+  background: linear-gradient(110deg, var(--strawberry), var(--grape), var(--blueberry));
+  text-shadow: 0 1px 1px rgba(0,0,0,.22);
+  box-shadow: 0 1px 0 rgba(255,255,255,.55) inset, 0 6px 16px rgba(155,111,176,.36); }
+
+.checkrow { display: flex; gap: 26px; align-items: center; margin-top: 20px; font-size: 16px; }
+.aqua-check { width: 19px; height: 19px; display: inline-grid; place-items: center;
+  background: linear-gradient(var(--bondi-lt), var(--bondi)); border: 1px solid var(--bondi-dk);
+  border-radius: 6px; box-shadow: 0 1px 0 rgba(255,255,255,.7) inset, 0 2px 5px rgba(46,159,176,.35);
+  font-family: var(--pixel); font-size: 11px; color: #fff; }
+.aqua-radio { width: 19px; height: 19px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #fff, var(--pearl));
+  border: 1px solid var(--pearl-dk); box-shadow: 0 2px 5px rgba(36,58,64,.14); position: relative; }
+.aqua-radio.on::after { content:""; position:absolute; inset:4px; border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, var(--bondi-lt), var(--bondi-dk)); }
+
+.field { display: flex; flex-direction: column; gap: 6px; max-width: 320px; }
+.field label { font-family: var(--pixel); font-size: 9px; letter-spacing: 1px; color: var(--ink-soft); }
+.field input { font-family: var(--mono); font-size: 14px; padding: 10px 12px; color: var(--ink);
+  background: rgba(255,255,255,.7); border: 1px solid var(--pearl-dk); border-radius: 12px;
+  box-shadow: 0 2px 5px rgba(36,58,64,.10) inset; outline: none;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.field input:focus { border-color: var(--bondi);
+  box-shadow: 0 0 0 3px rgba(46,159,176,.30), 0 2px 5px rgba(36,58,64,.10) inset; }
+
+/* ===== Fenêtre translucide (Aqua) ===== */
+.aqua-win { border-radius: var(--radius-lg); overflow: hidden;
+  background: var(--glass-2);
+  -webkit-backdrop-filter: saturate(150%) blur(18px); backdrop-filter: saturate(150%) blur(18px);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--shadow-soft), 0 30px 60px rgba(36,58,64,.18); }
+.titlebar {
+  height: 34px; display: flex; align-items: center; padding: 0 12px; gap: 8px;
+  background: linear-gradient(rgba(255,255,255,.85), rgba(225,236,239,.7));
+  border-bottom: 1px solid var(--glass-line);
+  box-shadow: 0 1px 0 rgba(255,255,255,.9) inset;
+  position: relative;
+}
+/* pinstripes Aqua fines derrière la barre */
+.titlebar .lines { position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(46,159,176,.12) 0 1px, transparent 1px 4px);
+  opacity: .6; }
+.lights { display: flex; gap: 7px; z-index: 1; }
+.lights i { width: 12px; height: 12px; border-radius: 50%;
+  box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 1px 2px rgba(0,0,0,.2); }
+.lights .r { background: radial-gradient(circle at 35% 30%, #ff9b8a, var(--strawberry)); }
+.lights .y { background: radial-gradient(circle at 35% 30%, #ffe39a, var(--rb-yellow)); }
+.lights .g { background: radial-gradient(circle at 35% 30%, #c4e88a, var(--lime)); }
+.win-title { z-index: 1; margin: 0 auto; font-family: var(--pixel); font-size: 10px;
+  color: var(--ink-soft); padding: 0 14px; letter-spacing: .5px; }
+.win-body { padding: 20px; background: rgba(255,255,255,.45); }
+
+/* ===== Terminal mock (sombre, cadre translucide) ===== */
+.term { background: var(--term-bg); color: var(--term-fg); font-family: var(--mono);
+  font-size: 13px; line-height: 1.6; padding: 20px 22px; min-height: 250px;
+  position: relative; }
+.term::before { content:""; position:absolute; inset:0 0 70% 0;
+  background: linear-gradient(rgba(255,255,255,.05), transparent); pointer-events:none; }
+.term .p { color: var(--lime); }
+.term .path { color: var(--bondi-lt); }
+.term .pr { color: var(--grape); }
+.term .star { color: var(--tangerine); }
+.term .dim { color: var(--term-dim); }
+.term .ok { color: var(--lime); }
+.term .warn { color: var(--rb-yellow); }
+.term .berry { color: var(--strawberry); }
+.term .cursor { display:inline-block; width:8px; height:15px; background: var(--bondi-lt);
+  vertical-align:-2px; animation: blink 1s steps(1) infinite; box-shadow: 0 0 6px var(--bondi-lt); }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ===== Tokens ===== */
+.tokens { font-family: var(--mono); font-size: 12.5px; line-height: 1.9;
+  background: var(--term-bg); color: var(--term-fg); padding: 24px 26px; border-radius: var(--radius-lg);
+  overflow-x: auto; box-shadow: var(--shadow-soft);
+  border: 1px solid var(--glass-line); }
+.tokens .k { color: var(--rb-yellow); }
+.tokens .v { color: var(--bondi-lt); }
+.tokens .cm { color: var(--term-dim); font-style: italic; }
+
+/* ===== Footer ===== */
+footer { margin-top: 96px; text-align: center; color: var(--ink-soft); font-style: italic; }
+footer .stripe { max-width: 290px; height: 13px; margin: 24px auto 14px; }
+
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+@media (max-width: 820px) {
+  .cols { grid-template-columns: 1fr; }
+  .grid-pal { grid-template-columns: repeat(3,1fr); }
+  .sw.hero-sw { grid-column: span 3; }
+  .type-row { grid-template-columns: 1fr; gap: 6px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Menu bar Aqua-lite -->
+<div class="menubar">
+  <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+    <defs>
+      <linearGradient id="rbMenu" gradientUnits="userSpaceOnUse" x1="0" y1="6" x2="0" y2="94">
+        <stop offset="0"     stop-color="#8FC04E"/><stop offset=".1666" stop-color="#8FC04E"/>
+        <stop offset=".1666" stop-color="#F0C34E"/><stop offset=".3333" stop-color="#F0C34E"/>
+        <stop offset=".3333" stop-color="#F0944E"/><stop offset=".5"     stop-color="#F0944E"/>
+        <stop offset=".5"     stop-color="#E2607E"/><stop offset=".6666" stop-color="#E2607E"/>
+        <stop offset=".6666" stop-color="#9B6FB0"/><stop offset=".8333" stop-color="#9B6FB0"/>
+        <stop offset=".8333" stop-color="#2E9FB0"/><stop offset="1"      stop-color="#2E9FB0"/>
+      </linearGradient>
+    </defs>
+    <path fill="url(#rbMenu)" d="M16 12 L33 38 Q50 29 67 38 L84 12 L89 53 Q86 80 63 91 Q50 97 37 91 Q14 80 11 53 Q11 31 16 12 Z"/>
+  </svg>
+  <span class="mb active">superkitty</span>
+  <span class="mb">Fichier</span>
+  <span class="mb">Édition</span>
+  <span class="mb">Fenêtre</span>
+  <span class="mb">Aide</span>
+  <span class="clock">25 juin · 21:00</span>
+</div>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero reveal" style="animation-delay:.05s">
+    <svg class="logo" viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <linearGradient id="rbBig" gradientUnits="userSpaceOnUse" x1="0" y1="6" x2="0" y2="94">
+          <stop offset="0"     stop-color="#8FC04E"/><stop offset=".1666" stop-color="#8FC04E"/>
+          <stop offset=".1666" stop-color="#F0C34E"/><stop offset=".3333" stop-color="#F0C34E"/>
+          <stop offset=".3333" stop-color="#F0944E"/><stop offset=".5"     stop-color="#F0944E"/>
+          <stop offset=".5"     stop-color="#E2607E"/><stop offset=".6666" stop-color="#E2607E"/>
+          <stop offset=".6666" stop-color="#9B6FB0"/><stop offset=".8333" stop-color="#9B6FB0"/>
+          <stop offset=".8333" stop-color="#2E9FB0"/><stop offset="1"      stop-color="#2E9FB0"/>
+        </linearGradient>
+        <radialGradient id="gloss" cx="38%" cy="26%" r="70%">
+          <stop offset="0" stop-color="rgba(255,255,255,.8)"/>
+          <stop offset="40%" stop-color="rgba(255,255,255,0)"/>
+        </radialGradient>
+      </defs>
+      <!-- silhouette chat (superkitty), héritée de la référence, mais en candy translucide + reflet verre -->
+      <path fill="url(#rbBig)" d="M16 12 L33 38 Q50 29 67 38 L84 12 L89 53 Q86 80 63 91 Q50 97 37 91 Q14 80 11 53 Q11 31 16 12 Z"/>
+      <path fill="url(#gloss)" d="M16 12 L33 38 Q50 29 67 38 L84 12 L89 53 Q86 80 63 91 Q50 97 37 91 Q14 80 11 53 Q11 31 16 12 Z"/>
+    </svg>
+    <div class="kicker">Charte graphique · terminal pour Claude Code</div>
+    <h1>superkitty</h1>
+    <p class="tag">« Translucide dehors, neuf vies dedans. » — le terminal de verre qui ne perd jamais ta session.</p>
+    <div class="stripe">
+      <i class="c1"></i><i class="c2"></i><i class="c3"></i>
+      <i class="c4"></i><i class="c5"></i><i class="c6"></i>
+    </div>
+  </header>
+
+  <!-- 01 — Concept -->
+  <section class="reveal" style="animation-delay:.1s">
+    <div class="sec-head"><span class="sec-num">01</span><h2>L'idée</h2></div>
+    <p class="sec-desc">
+      On reste dans l'ADN <b>Apple rétro raffiné</b> de la charte sœur — même <b>Garamond</b>
+      italique pour la marque, même <b>Monaco</b> pour le code — mais on change de matière :
+      cap sur les <b>premiers iMac (1998–2001)</b>. Tout devient <b>verre dépoli candy</b> :
+      surfaces translucides, reflets doux, <b>pinstripes Aqua</b> en fond, coins très arrondis.
+      Une couleur <b>héro façon « Bondi blue »</b> domine, déclinée en teintes bonbon. Le ruban
+      six-couleurs reste la signature, ici en version <b>lumineuse et translucide</b>. Élégant,
+      pas criard — pensé pour de longues sessions Claude.
+    </p>
+    <hr class="rule" />
+  </section>
+
+  <!-- 02 — Palette -->
+  <section class="reveal" style="animation-delay:.15s">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Palette</h2></div>
+    <p class="sec-desc">Un set candy translucide « maison », distinct des hexes Apple, organisé autour du héro Bondi. Ces teintes servent d'accents — et de tints par onglet/projet.</p>
+    <div class="grid-pal">
+      <div class="sw hero-sw"><div class="chip" style="background:linear-gradient(var(--bondi-lt),var(--bondi))"></div><div class="meta"><b>Bondi · héro</b><span>#2E9FB0</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--lime)"></div><div class="meta"><b>Citron vert</b><span>#8FC04E</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--tangerine)"></div><div class="meta"><b>Mandarine</b><span>#F0944E</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--strawberry)"></div><div class="meta"><b>Fraise</b><span>#E2607E</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--blueberry)"></div><div class="meta"><b>Myrtille</b><span>#5A6FC0</span></div></div>
+      <div class="sw"><div class="chip" style="background:var(--grape)"></div><div class="meta"><b>Raisin</b><span>#9B6FB0</span></div></div>
+    </div>
+
+    <div class="grid-neutral">
+      <div class="sw"><div class="chip" style="height:54px;background:var(--frost)"></div><div class="meta"><b>Givre</b><span>#F4FAFB</span></div></div>
+      <div class="sw"><div class="chip" style="height:54px;background:var(--pearl)"></div><div class="meta"><b>Perle</b><span>#DCE6E9</span></div></div>
+      <div class="sw"><div class="chip" style="height:54px;background:var(--pearl-dk)"></div><div class="meta"><b>Perle −</b><span>#BFCDD2</span></div></div>
+      <div class="sw"><div class="chip" style="height:54px;background:var(--ink)"></div><div class="meta"><b>Encre</b><span>#243A40</span></div></div>
+      <div class="sw"><div class="chip" style="height:54px;background:var(--term-bg)"></div><div class="meta"><b>Terminal</b><span>#142329</span></div></div>
+      <div class="sw"><div class="chip" style="height:54px;background:var(--term-fg)"></div><div class="meta"><b>Texte term.</b><span>#E7F1F2</span></div></div>
+    </div>
+  </section>
+
+  <!-- 03 — Typographie -->
+  <section class="reveal" style="animation-delay:.2s">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Typographie</h2></div>
+    <p class="sec-desc">Inchangée par rapport à la charte sœur — c'est le fil rouge des deux variantes : Garamond pour la marque et les titres, Monaco pour le code/terminal, un pixel-font « Chicago » réservé aux micro-étiquettes.</p>
+    <div class="panel">
+      <div class="type-row">
+        <div class="type-label">MARQUE / TITRES<span>EB Garamond · italic</span></div>
+        <div class="t-brand" style="font-style:italic;font-size:44px;line-height:1.05">Un terminal de verre<br>aux six couleurs.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">CORPS<span>EB Garamond · regular</span></div>
+        <div class="t-brand" style="font-size:18px">Closing the window never kills your session — tmux keeps it alive, and reopening reattaches the live Claude run, scrollback and all.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">TERMINAL / CODE<span>Monaco · regular</span></div>
+        <div class="t-mono" style="font-size:15px">superkitty ~ % claude --resume<br>const id = "superkitty-p1"; // tmux session</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">UI / ÉTIQUETTES<span>Silkscreen · « Chicago »</span></div>
+        <div class="t-pixel" style="font-size:13px">FICHIER · ÉDITION · FENÊTRE · ⌘K PALETTE</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 — Composants -->
+  <section class="reveal" style="animation-delay:.25s">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Composants</h2></div>
+    <p class="sec-desc">Boutons gélule « Aqua » (dégradé vertical doux, highlight blanc en haut, coins ronds), champs de verre, et une fenêtre translucide à coins généreux — le tout en pur CSS.</p>
+    <div class="cols">
+      <div class="panel">
+        <div class="controls">
+          <button class="btn btn-default">Ouvrir</button>
+          <button class="btn">Annuler</button>
+          <button class="btn btn-rb">Nouvelle session</button>
+        </div>
+        <div class="checkrow">
+          <span><span class="aqua-check">✓</span> Sandbox</span>
+          <span><span class="aqua-radio on"></span> tmux</span>
+          <span><span class="aqua-radio"></span> raw</span>
+        </div>
+        <div class="field" style="margin-top:22px">
+          <label>NOM DE SESSION</label>
+          <input type="text" value="superkitty-p1" spellcheck="false" />
+        </div>
+      </div>
+
+      <div class="aqua-win">
+        <div class="titlebar">
+          <div class="lines"></div>
+          <span class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></span>
+          <span class="win-title">À propos de superkitty</span>
+        </div>
+        <div class="win-body">
+          <p style="margin:0 0 12px;font-size:17px">Une fenêtre de verre dépoli : barre translucide, pinstripes Aqua fines, pastilles glossy, coins très arrondis.</p>
+          <div class="stripe" style="margin:14px 0 0;max-width:none;height:16px">
+            <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><i class="c5"></i><i class="c6"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 — Terminal -->
+  <section class="reveal" style="animation-delay:.3s">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Le terminal</h2></div>
+    <p class="sec-desc">Le cœur du produit : fond sombre bleu-nuit pour le confort des longues sessions, cadre de verre translucide, et accents ANSI mappés sur l'arc-en-ciel candy. Les sessions tmux survivent à la fermeture — rouvrir réattache le run Claude vivant.</p>
+    <div class="aqua-win">
+      <div class="titlebar">
+        <div class="lines"></div>
+        <span class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></span>
+        <span class="win-title">superkitty — ~/Dev/superkitty — claude</span>
+      </div>
+      <div class="term">
+        <div><span class="p">lucas@superkitty</span> <span class="path">~/Dev/superkitty</span> <span class="pr">%</span> claude --resume</div>
+        <div>&nbsp;</div>
+        <div><span class="star">✻</span> Welcome back to <b>Claude Code</b> <span class="dim">· session réattachée (tmux)</span></div>
+        <div class="dim">  ⌘K palette · ⌘P fichiers · ⌘B sessions · ⌃` Quake</div>
+        <div>&nbsp;</div>
+        <div><span class="ok">●</span> Lecture de <span class="path">src/App.tsx</span> <span class="dim">(412 lignes)</span></div>
+        <div><span class="berry">●</span> Glisser-déposer <span class="path">capture.png</span> → <span class="dim">[Image #1]</span></div>
+        <div><span class="warn">●</span> Édition de <span class="path">src/themes.ts</span> <span class="dim">+1 thème « iMac »</span></div>
+        <div><span class="ok">✓</span> Type-check OK · <span class="dim">0 erreur · pane sandboxé</span></div>
+        <div>&nbsp;</div>
+        <div><span class="pr">%</span> <span class="cursor"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 — Tokens -->
+  <section class="reveal" style="animation-delay:.35s">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Design tokens</h2></div>
+    <p class="sec-desc">Prêts à coller dans <span class="t-mono">App.css</span> (variables CSS pour le chrome de verre) et <span class="t-mono">themes.ts</span> (thème xterm « iMac »).</p>
+    <div class="tokens">
+<span class="cm">/* App.css — chrome verre dépoli / candy */</span><br>
+<span class="k">--bondi</span>:  <span class="v">#2E9FB0</span>;  <span class="k">--lime</span>:   <span class="v">#8FC04E</span>;  <span class="k">--tangerine</span>: <span class="v">#F0944E</span>;<br>
+<span class="k">--strawberry</span>: <span class="v">#E2607E</span>;  <span class="k">--grape</span>: <span class="v">#9B6FB0</span>;  <span class="k">--blueberry</span>: <span class="v">#5A6FC0</span>;<br>
+<span class="k">--frost</span>: <span class="v">#F4FAFB</span>;  <span class="k">--pearl</span>: <span class="v">#DCE6E9</span>;  <span class="k">--ink</span>: <span class="v">#243A40</span>;<br>
+<span class="k">--glass</span>: <span class="v">rgba(255,255,255,.55)</span>;  <span class="cm">/* backdrop-filter: blur(16px) */</span><br>
+<br>
+<span class="cm">// themes.ts — thème xterm « iMac »</span><br>
+{ <span class="k">name</span>: <span class="v">"iMac"</span>, <span class="k">background</span>: <span class="v">"#142329"</span>, <span class="k">foreground</span>: <span class="v">"#E7F1F2"</span>,<br>
+&nbsp;&nbsp;<span class="k">cursor</span>: <span class="v">"#6FC4D1"</span>, <span class="k">green</span>: <span class="v">"#8FC04E"</span>, <span class="k">yellow</span>: <span class="v">"#F0C34E"</span>,<br>
+&nbsp;&nbsp;<span class="k">red</span>: <span class="v">"#E2607E"</span>, <span class="k">magenta</span>: <span class="v">"#9B6FB0"</span>, <span class="k">blue</span>: <span class="v">"#2E9FB0"</span> }
+    </div>
+  </section>
+
+  <footer class="reveal" style="animation-delay:.4s">
+    <div class="stripe">
+      <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><i class="c5"></i><i class="c6"></i>
+    </div>
+    <p>superkitty · charte « iMac translucide » · variante sœur · proposition à valider</p>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>superkitty — Charte « Mosaïque »</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=VT323&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  /* =========================================================
+     SUPERKITTY — DESIGN SYSTEM « MOSAÏQUE »
+     Pixel / Minitel-télétexte / arcade 8-bit
+     ========================================================= */
+
+  :root{
+    /* Fond Minitel profond */
+    --bg:        #0a0b2e;
+    --bg-2:      #12134a;
+    --ink:       #eef0ff;
+    --ink-dim:   #9aa0d8;
+
+    /* Palette CRT couleur — télétexte/DOS qui claque */
+    --red:       #ff2e57;
+    --yellow:    #ffd400;
+    --green:     #00e676;
+    --cyan:      #19e6e6;
+    --magenta:   #ff36c9;
+    --blue:      #3d6bff;
+    --orange:    #ff7a18;
+    --white:     #f4f6ff;
+    --black:     #05050f;
+
+    --shadow:    6px 6px 0 var(--black);
+    --shadow-sm: 3px 3px 0 var(--black);
+    --shadow-lg: 10px 10px 0 var(--black);
+
+    --pixel: 'Press Start 2P', monospace;
+    --pixel2:'Silkscreen', monospace;
+    --body:  'Space Mono', monospace;
+    --crt:   'VT323', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.022) 0 2px, transparent 2px 4px),
+      radial-gradient(120% 80% at 50% -10%, #1a1c63 0%, var(--bg) 60%);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:16px;
+    line-height:1.6;
+    -webkit-font-smoothing:none;
+    overflow-x:hidden;
+  }
+
+  /* CRT scanline + vignette overlay */
+  body::after{
+    content:"";
+    position:fixed; inset:0; pointer-events:none; z-index:9999;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.10) 0 1px, transparent 1px 3px);
+    mix-blend-mode:multiply;
+    opacity:.5;
+  }
+
+  ::selection{ background:var(--magenta); color:var(--black); }
+
+  a{ color:var(--cyan); }
+
+  .wrap{ max-width:1120px; margin:0 auto; padding:0 22px; }
+
+  /* ---------- Image-rendering pixel ---------- */
+  .px{ image-rendering:pixelated; }
+
+  /* =========================================================
+     BARRE DE MENU MINITEL / DOS
+     ========================================================= */
+  .topbar{
+    position:sticky; top:0; z-index:500;
+    background:var(--black);
+    border-bottom:4px solid var(--cyan);
+    font-family:var(--pixel2);
+    font-weight:700;
+  }
+  .topbar .row{
+    display:flex; align-items:center; gap:0;
+    max-width:1120px; margin:0 auto;
+    flex-wrap:wrap;
+  }
+  .topbar .brand{
+    font-family:var(--pixel);
+    font-size:11px;
+    color:var(--black);
+    background:var(--yellow);
+    padding:12px 14px;
+    letter-spacing:0;
+    white-space:nowrap;
+  }
+  .topbar a.menu{
+    text-decoration:none; color:var(--ink);
+    padding:13px 13px; font-size:14px; letter-spacing:1px;
+    border-left:2px solid #2a2c70;
+    text-transform:uppercase;
+  }
+  .topbar a.menu:hover{ background:var(--magenta); color:var(--black); }
+  .topbar .blink{
+    margin-left:auto; color:var(--green); font-size:14px;
+    padding:13px 14px; letter-spacing:1px;
+  }
+  .blink{ animation:blink 1.1s steps(1) infinite; }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  /* =========================================================
+     HERO
+     ========================================================= */
+  .hero{ position:relative; padding:54px 0 40px; }
+  .hero .wrap{ display:grid; grid-template-columns:auto 1fr; gap:40px; align-items:center; }
+
+  /* --- CHAT PIXEL-ART (vraie grille CSS) --- */
+  .cat{
+    --u:11px;
+    display:grid;
+    grid-template-columns:repeat(16, var(--u));
+    grid-template-rows:repeat(16, var(--u));
+    width:calc(16 * var(--u));
+    background:var(--black);
+    padding:var(--u);
+    border:5px solid var(--cyan);
+    box-shadow:var(--shadow-lg);
+  }
+  .cat i{ display:block; }
+  .cat i.k{ background:#1b1d55; }          /* fond */
+  .cat i.f{ background:var(--magenta); }   /* fourrure */
+  .cat i.e{ background:var(--green); }     /* yeux */
+  .cat i.n{ background:var(--yellow); }    /* nez */
+  .cat i.in{ background:var(--blue); }     /* oreille intérieure */
+  .cat i.w{ background:var(--white); }     /* moustaches */
+
+  .hero h1{
+    font-family:var(--pixel);
+    font-size:clamp(22px, 5vw, 46px);
+    line-height:1.05;
+    margin:0 0 6px;
+    color:var(--yellow);
+    text-shadow:5px 5px 0 var(--black), 9px 9px 0 var(--magenta);
+    letter-spacing:0;
+  }
+  .hero .sub{
+    font-family:var(--pixel2); font-size:15px; letter-spacing:1px;
+    color:var(--cyan); text-transform:uppercase; margin:14px 0 18px;
+  }
+  .hero p.lead{
+    font-size:17px; color:var(--ink); max-width:46ch; margin:0 0 22px;
+  }
+  .hero .lead b{ color:var(--green); }
+
+  .pillrow{ display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; }
+  .tag{
+    font-family:var(--pixel2); font-weight:700; font-size:12px;
+    text-transform:uppercase; letter-spacing:1px;
+    padding:7px 11px; color:var(--black); border:3px solid var(--black);
+    box-shadow:var(--shadow-sm);
+  }
+  .tag.r{ background:var(--red); } .tag.y{ background:var(--yellow); }
+  .tag.g{ background:var(--green); } .tag.c{ background:var(--cyan); }
+  .tag.m{ background:var(--magenta); color:var(--white);} .tag.b{ background:var(--blue); color:var(--white);}
+
+  /* ---- bandeau mosaïque télétexte ---- */
+  .mosaic-strip{ display:flex; height:18px; margin:34px 0 0; }
+  .mosaic-strip i{ flex:1; }
+
+  /* =========================================================
+     SECTION SCAFFOLD
+     ========================================================= */
+  section{ padding:40px 0; border-top:4px solid #23267a; }
+  .sec-head{ display:flex; align-items:flex-end; gap:14px; margin-bottom:26px; flex-wrap:wrap; }
+  .sec-num{
+    font-family:var(--pixel); font-size:13px; color:var(--black);
+    background:var(--cyan); padding:9px 11px; box-shadow:var(--shadow-sm);
+    border:3px solid var(--black);
+  }
+  .sec-title{
+    font-family:var(--pixel); font-size:clamp(14px,2.6vw,22px);
+    color:var(--white); margin:0; text-shadow:3px 3px 0 var(--magenta);
+  }
+  .sec-desc{ color:var(--ink-dim); font-size:15px; max-width:64ch; margin:-12px 0 26px; }
+
+  /* =========================================================
+     SECTION 01 — GRILLE DE TUILES (MENU ARCADE)
+     ========================================================= */
+  .arcade{
+    display:grid; gap:16px;
+    grid-template-columns:repeat(3, 1fr);
+  }
+  .tile{
+    position:relative;
+    border:4px solid var(--black);
+    box-shadow:var(--shadow);
+    padding:18px 16px 16px;
+    color:var(--black);
+    min-height:158px;
+    display:flex; flex-direction:column;
+    transition:transform .08s steps(2);
+  }
+  .tile:hover{ transform:translate(-3px,-3px); box-shadow:9px 9px 0 var(--black); }
+  .tile .ic{
+    font-family:var(--pixel); font-size:20px;
+    margin-bottom:auto;
+  }
+  .tile .kbd{
+    align-self:flex-start;
+    font-family:var(--pixel2); font-weight:700; font-size:12px;
+    background:var(--black); color:var(--white);
+    padding:3px 7px; margin-bottom:10px; letter-spacing:1px;
+  }
+  .tile h3{
+    font-family:var(--pixel2); font-weight:700; font-size:14px;
+    letter-spacing:.5px; text-transform:uppercase; margin:0 0 6px;
+    line-height:1.25;
+  }
+  .tile p{ font-size:13px; line-height:1.45; margin:0; opacity:.92; }
+
+  .t-red{ background:var(--red); color:var(--white); }
+  .t-yellow{ background:var(--yellow); }
+  .t-green{ background:var(--green); }
+  .t-cyan{ background:var(--cyan); }
+  .t-magenta{ background:var(--magenta); color:var(--white); }
+  .t-blue{ background:var(--blue); color:var(--white); }
+  .t-orange{ background:var(--orange); color:var(--black); }
+  .t-white{ background:var(--white); }
+  .t-red .kbd,.t-magenta .kbd,.t-blue .kbd{ background:var(--white); color:var(--black); }
+
+  /* =========================================================
+     SECTION 02 — PALETTE
+     ========================================================= */
+  .palette{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .swatch{
+    border:4px solid var(--black); box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .swatch .chip{ height:90px; }
+  .swatch .meta{
+    background:var(--black); padding:10px 11px;
+    display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+  }
+  .swatch .meta .nm{ font-family:var(--pixel2); font-weight:700; font-size:12px; letter-spacing:1px; text-transform:uppercase; }
+  .swatch .meta .hx{ font-family:var(--body); font-size:12px; color:var(--ink-dim); }
+
+  /* =========================================================
+     SECTION 03 — TYPOGRAPHIE
+     ========================================================= */
+  .type-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .typecard{
+    border:4px solid var(--black); box-shadow:var(--shadow);
+    background:var(--bg-2); padding:22px;
+  }
+  .typecard .label{
+    font-family:var(--pixel2); font-weight:700; font-size:11px; letter-spacing:1px;
+    text-transform:uppercase; color:var(--black); background:var(--yellow);
+    display:inline-block; padding:4px 8px; margin-bottom:16px;
+  }
+  .spec-pixel{ font-family:var(--pixel); font-size:24px; color:var(--green); line-height:1.4; }
+  .spec-pixel small{ display:block; font-size:11px; color:var(--cyan); margin-top:14px; }
+  .glyphs{ font-family:var(--pixel); font-size:13px; color:var(--ink); line-height:2; word-spacing:4px; margin-top:14px; }
+  .spec-body{ font-family:var(--body); font-size:16px; color:var(--ink); }
+  .spec-body h4{ font-family:var(--body); font-weight:700; font-size:18px; margin:0 0 8px; color:var(--white); }
+  .spec-crt{ font-family:var(--crt); font-size:26px; color:var(--cyan); line-height:1.25; margin-top:14px; }
+  .scale-row{ display:flex; align-items:baseline; gap:14px; border-bottom:2px dashed #2c2f86; padding:8px 0; }
+  .scale-row span:first-child{ font-family:var(--pixel2); font-size:11px; color:var(--ink-dim); width:64px; }
+
+  /* =========================================================
+     SECTION 04 — COMPOSANTS
+     ========================================================= */
+  .comp-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .panel{
+    border:4px solid var(--black); box-shadow:var(--shadow);
+    background:var(--bg-2); padding:22px;
+  }
+  .panel > .ptitle{
+    font-family:var(--pixel2); font-weight:700; font-size:12px; letter-spacing:1px;
+    text-transform:uppercase; color:var(--cyan); margin:0 0 18px;
+  }
+
+  /* boutons arcade */
+  .btn{
+    font-family:var(--pixel2); font-weight:700; font-size:13px;
+    text-transform:uppercase; letter-spacing:1px;
+    padding:12px 16px; border:3px solid var(--black);
+    box-shadow:var(--shadow-sm); cursor:pointer;
+    color:var(--black); background:var(--yellow);
+    transition:transform .06s steps(2), box-shadow .06s steps(2);
+    display:inline-block;
+  }
+  .btn:active{ transform:translate(3px,3px); box-shadow:0 0 0 var(--black); }
+  .btn.primary{ background:var(--green); }
+  .btn.danger{ background:var(--red); color:var(--white); }
+  .btn.ghost{ background:transparent; color:var(--cyan); border-color:var(--cyan); box-shadow:3px 3px 0 #001; }
+  .btnrow{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:14px; }
+
+  /* champ */
+  .field{ margin-top:18px; }
+  .field label{ display:block; font-family:var(--pixel2); font-weight:700; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--ink-dim); margin-bottom:7px; }
+  .field .input{
+    display:flex; align-items:center; gap:6px;
+    background:var(--black); border:3px solid var(--cyan);
+    padding:11px 12px; font-family:var(--crt); font-size:20px; color:var(--green);
+  }
+  .field .input .cur{ background:var(--green); width:11px; height:20px; display:inline-block; animation:blink 1s steps(1) infinite; }
+
+  /* fenêtre de pane 8-bit */
+  .pane{
+    border:4px solid var(--black); box-shadow:var(--shadow);
+    background:var(--black); overflow:hidden;
+  }
+  .pane .bar{
+    display:flex; align-items:center; gap:8px;
+    background:var(--magenta); padding:8px 10px; border-bottom:3px solid var(--black);
+  }
+  .pane .bar .dot{ width:13px; height:13px; border:2px solid var(--black); }
+  .pane .bar .ttl{ font-family:var(--pixel2); font-weight:700; font-size:12px; color:var(--white); letter-spacing:1px; margin-left:6px; }
+  .pane .bar .right{ margin-left:auto; font-family:var(--pixel2); font-size:11px; color:var(--black); }
+  .pane .body{ padding:14px; font-family:var(--crt); font-size:19px; line-height:1.25; }
+
+  /* tuile indicateur */
+  .meter{ display:flex; gap:5px; margin-top:8px; }
+  .meter i{ width:14px; height:20px; background:#23267a; }
+  .meter i.on{ background:var(--green); }
+
+  /* =========================================================
+     SECTION 05 — MOCK TERMINAL COULEUR
+     ========================================================= */
+  .term{
+    border:5px solid var(--black); box-shadow:var(--shadow-lg);
+    background:var(--black);
+  }
+  .term .chrome{
+    display:flex; align-items:center; gap:8px;
+    background:var(--bg-2); padding:10px 12px; border-bottom:4px solid var(--cyan);
+  }
+  .term .chrome .lights{ display:flex; gap:7px; }
+  .term .chrome .lights i{ width:14px; height:14px; border:2px solid var(--black); }
+  .term .chrome .name{ font-family:var(--pixel2); font-weight:700; font-size:12px; color:var(--cyan); letter-spacing:1px; }
+  .term .chrome .tabs{ margin-left:auto; display:flex; gap:0; }
+  .term .chrome .tabs span{ font-family:var(--pixel2); font-size:11px; padding:5px 9px; border:2px solid var(--black); color:var(--ink-dim); }
+  .term .chrome .tabs span.act{ background:var(--magenta); color:var(--black); }
+  .term .screen{
+    padding:18px; font-family:var(--crt); font-size:20px; line-height:1.3;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,0) 0 3px, rgba(255,255,255,.02) 3px 4px),
+      #05060f;
+  }
+  .term .screen .l{ display:block; white-space:pre-wrap; }
+  .c-g{ color:var(--green); } .c-c{ color:var(--cyan); } .c-y{ color:var(--yellow); }
+  .c-m{ color:var(--magenta); } .c-r{ color:var(--red); } .c-b{ color:var(--blue); }
+  .c-d{ color:var(--ink-dim); } .c-w{ color:var(--white); }
+  .blkcur{ background:var(--green); color:var(--black); }
+  .imgtag{ background:var(--magenta); color:var(--black); padding:0 4px; }
+
+  /* =========================================================
+     SECTION 06 — LAYOUTS kitty
+     ========================================================= */
+  .layouts{ display:grid; grid-template-columns:repeat(6,1fr); gap:14px; }
+  .lay{
+    border:4px solid var(--black); box-shadow:var(--shadow-sm);
+    background:var(--bg-2); padding:12px; text-align:center;
+  }
+  .lay .mini{
+    display:grid; gap:3px; height:70px; margin-bottom:10px;
+    background:var(--black); padding:4px; border:2px solid var(--black);
+  }
+  .lay .mini i{ background:var(--cyan); }
+  .lay .mini i.f{ background:var(--magenta); }
+  .lay .nm{ font-family:var(--pixel2); font-weight:700; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--ink); }
+
+  /* =========================================================
+     FOOTER
+     ========================================================= */
+  .foot{ border-top:5px solid var(--magenta); padding:34px 0 60px; }
+  .foot .big{
+    font-family:var(--pixel); font-size:clamp(16px,3.4vw,30px); color:var(--yellow);
+    text-shadow:4px 4px 0 var(--black), 7px 7px 0 var(--blue);
+    margin:0 0 18px;
+  }
+  .foot .cols{ display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:24px; margin-top:24px; }
+  .foot h5{ font-family:var(--pixel2); font-weight:700; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:var(--cyan); margin:0 0 12px; }
+  .foot p, .foot li{ font-size:14px; color:var(--ink-dim); }
+  .foot ul{ list-style:none; padding:0; margin:0; }
+  .foot li{ padding:4px 0; }
+  .foot li::before{ content:"► "; color:var(--green); }
+  .m3615{
+    display:inline-block; font-family:var(--pixel); font-size:13px;
+    color:var(--black); background:var(--green); padding:10px 12px;
+    border:3px solid var(--black); box-shadow:var(--shadow-sm); margin-top:8px;
+  }
+  .copyr{ margin-top:34px; font-family:var(--pixel2); font-size:11px; letter-spacing:1px; color:var(--ink-dim); text-transform:uppercase; }
+
+  /* =========================================================
+     RESPONSIVE
+     ========================================================= */
+  @media (max-width:920px){
+    .arcade{ grid-template-columns:repeat(2,1fr); }
+    .palette{ grid-template-columns:repeat(2,1fr); }
+    .type-grid,.comp-grid{ grid-template-columns:1fr; }
+    .layouts{ grid-template-columns:repeat(3,1fr); }
+    .foot .cols{ grid-template-columns:1fr; }
+  }
+  @media (max-width:680px){
+    .hero .wrap{ grid-template-columns:1fr; justify-items:center; text-align:center; }
+    .hero p.lead{ text-align:left; }
+    .arcade{ grid-template-columns:1fr; }
+    .layouts{ grid-template-columns:repeat(2,1fr); }
+    .topbar a.menu{ display:none; }
+    .topbar .brand{ width:100%; text-align:center; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===================== BARRE MENU MINITEL/DOS ===================== -->
+  <nav class="topbar">
+    <div class="row">
+      <span class="brand">&#9612;&#9612; SUPERKITTY</span>
+      <a class="menu" href="#hero">Accueil</a>
+      <a class="menu" href="#features">Menu</a>
+      <a class="menu" href="#palette">Palette</a>
+      <a class="menu" href="#typo">Typo</a>
+      <a class="menu" href="#composants">Composants</a>
+      <a class="menu" href="#terminal">Terminal</a>
+      <span class="blink">&#9608; 3615 EN LIGNE</span>
+    </div>
+  </nav>
+
+  <!-- ===================== HERO ===================== -->
+  <header class="hero" id="hero">
+    <div class="wrap">
+
+      <!-- CHAT PIXEL-ART : grille 16x16 -->
+      <div class="cat px" role="img" aria-label="Chat en pixel-art, mascotte de superkitty">
+        <!-- ligne 1 -->
+        <i class="k"></i><i class="k"></i><i class="f"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="f"></i><i class="k"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 2 -->
+        <i class="k"></i><i class="f"></i><i class="in"></i><i class="f"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="f"></i><i class="in"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 3 -->
+        <i class="k"></i><i class="f"></i><i class="in"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="in"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 4 -->
+        <i class="k"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 5 -->
+        <i class="k"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 6 : yeux -->
+        <i class="k"></i><i class="f"></i><i class="e"></i><i class="e"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="e"></i><i class="e"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 7 : yeux -->
+        <i class="k"></i><i class="f"></i><i class="e"></i><i class="e"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="e"></i><i class="e"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 8 -->
+        <i class="k"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 9 : nez -->
+        <i class="k"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="w"></i><i class="n"></i><i class="n"></i><i class="w"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 10 : moustaches -->
+        <i class="w"></i><i class="w"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="w"></i><i class="f"></i><i class="n"></i><i class="n"></i><i class="f"></i><i class="w"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="w"></i><i class="w"></i>
+        <!-- ligne 11 -->
+        <i class="k"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="w"></i><i class="w"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 12 -->
+        <i class="k"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 13 -->
+        <i class="k"></i><i class="k"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 14 : pattes -->
+        <i class="k"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 15 -->
+        <i class="k"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="f"></i><i class="f"></i><i class="k"></i><i class="k"></i>
+        <!-- ligne 16 -->
+        <i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i>
+      </div>
+
+      <div>
+        <h1>SUPER&shy;KITTY</h1>
+        <div class="sub">&#9658; Le terminal macOS qui a neuf vies</div>
+        <p class="lead">
+          Un <b>vrai terminal</b> comme kitty (PTY complet, n'importe quel programme shell)
+          mais <b>taillé pour Claude Code</b>. On a pris les frictions du quotidien et on les a
+          détruites une par une. Tes sessions <b>ne meurent jamais</b>.
+        </p>
+        <div class="pillrow">
+          <span class="tag g">PTY r&eacute;el</span>
+          <span class="tag c">tmux persistant</span>
+          <span class="tag m">Panes kitty</span>
+          <span class="tag y">Drag &amp; drop</span>
+          <span class="tag b">macOS</span>
+          <span class="tag r">Friction-first</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="mosaic-strip">
+        <i style="background:var(--red)"></i>
+        <i style="background:var(--orange)"></i>
+        <i style="background:var(--yellow)"></i>
+        <i style="background:var(--green)"></i>
+        <i style="background:var(--cyan)"></i>
+        <i style="background:var(--blue)"></i>
+        <i style="background:var(--magenta)"></i>
+        <i style="background:var(--white)"></i>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== 01 — MENU ARCADE / FEATURES ===================== -->
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">01</span>
+        <h2 class="sec-title">INSERER 1 JETON &#9658; MENU</h2>
+      </div>
+      <p class="sec-desc">
+        Chaque tuile = une friction résolue. Choisis ton niveau. Construit « friction-first » :
+        un palier, une douleur en moins.
+      </p>
+
+      <div class="arcade">
+        <div class="tile t-green">
+          <div class="ic">&#9608;&#9617;&#9608;</div>
+          <span class="kbd">tmux</span>
+          <h3>Sessions qui ne meurent jamais</h3>
+          <p>Fermer la fen&ecirc;tre ne tue jamais le run. La rouvrir r&eacute;attache le Claude vivant + tout le scrollback.</p>
+        </div>
+
+        <div class="tile t-cyan">
+          <div class="ic">&#9636;&#9636;</div>
+          <span class="kbd">PANES</span>
+          <h3>Onglets &amp; panes kitty</h3>
+          <p>tall, fat, grid, horizontal, vertical, stack. Auto-&eacute;quilibr&eacute;s &agrave; chaque ajout, rien ne s'empile.</p>
+        </div>
+
+        <div class="tile t-magenta">
+          <div class="ic">&#9650;IMG</div>
+          <span class="kbd">DROP</span>
+          <h3>Drop d'image</h3>
+          <p>L&acirc;che une image : le chemin part en bracketed-paste. Claude affiche <strong>[Image #1]</strong>. Magie.</p>
+        </div>
+
+        <div class="tile t-yellow">
+          <div class="ic">&#9776;</div>
+          <span class="kbd">&#8984;K</span>
+          <h3>Palette de commandes</h3>
+          <p>Recherche floue de toutes les actions + sessions tmux. Double comme antis&egrave;che des raccourcis.</p>
+        </div>
+
+        <div class="tile t-red">
+          <div class="ic">&#9633;&#9654;</div>
+          <span class="kbd">&#8984;P</span>
+          <h3>S&eacute;lecteur de fichiers</h3>
+          <p>Liste git-aware du dossier courant. Choisis, le chemin s'ins&egrave;re tout seul dans le pane.</p>
+        </div>
+
+        <div class="tile t-blue">
+          <div class="ic">&#9998;</div>
+          <span class="kbd">&#8984;E</span>
+          <h3>Compositeur de prompt</h3>
+          <p>&Eacute;cris ton prompt multi-lignes au calme, <strong>&#8984;&#8629;</strong> l'envoie au pane focus.</p>
+        </div>
+
+        <div class="tile t-orange">
+          <div class="ic">&#9783;</div>
+          <span class="kbd">&#8963;&#8679;N</span>
+          <h3>Bloc-notes par onglet</h3>
+          <p>Un scratchpad persistant par onglet pour tes id&eacute;es, snippets et TODO en cours de run.</p>
+        </div>
+
+        <div class="tile t-white">
+          <div class="ic">&#9776;&#9776;</div>
+          <span class="kbd">&#8984;B</span>
+          <h3>Sidebar sessions</h3>
+          <p>Toutes les sessions tmux list&eacute;es, point attach&eacute;/d&eacute;tach&eacute;. Clique pour rattacher, &#128465; pour tuer.</p>
+        </div>
+
+        <div class="tile t-green">
+          <div class="ic">&#9660;&#9660;</div>
+          <span class="kbd">&#8963;&#96;</span>
+          <h3>Dropdown Quake global</h3>
+          <p>Hotkey syst&egrave;me depuis n'importe quelle app : choisis un projet, tape, <strong>&#8629;</strong>, &ccedil;a tourne.</p>
+        </div>
+
+        <div class="tile t-cyan">
+          <div class="ic">&#9728;!</div>
+          <span class="kbd">BELL</span>
+          <h3>Notifications de fin d'agent</h3>
+          <p>L'agent a fini ? Une notif macOS et un badge d'activit&eacute; sur le pane. Plus de babysitting.</p>
+        </div>
+
+        <div class="tile t-magenta">
+          <div class="ic">&#128274;</div>
+          <span class="kbd">SBX</span>
+          <h3>Sandbox par pane</h3>
+          <p>Write-confinement Seatbelt : les &eacute;critures rest&eacute;es dans le projet. Un pane = un p&eacute;rim&egrave;tre.</p>
+        </div>
+
+        <div class="tile t-yellow">
+          <div class="ic">&#8634;</div>
+          <span class="kbd">&#8984;&#8679;T</span>
+          <h3>Rouvrir pane / onglet</h3>
+          <p>Historique de fermeture. Un pane d&eacute;tach&eacute; r&eacute;attache son run vivant, un onglet tu&eacute; se recr&eacute;e dans son layout.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 02 — PALETTE ===================== -->
+  <section id="palette">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <h2 class="sec-title">PALETTE CRT</h2>
+      </div>
+      <p class="sec-desc">
+        Huit teintes saturées « couleur télétexte / DOS ». Assumées, qui claquent, posées sur
+        un bleu Minitel profond. Pas de pastel, pas de dégradé doux.
+      </p>
+
+      <div class="palette">
+        <div class="swatch"><div class="chip" style="background:var(--red)"></div><div class="meta"><span class="nm">Rouge</span><span class="hx">#FF2E57</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--orange)"></div><div class="meta"><span class="nm">Orange</span><span class="hx">#FF7A18</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--yellow)"></div><div class="meta"><span class="nm">Jaune</span><span class="hx">#FFD400</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--green)"></div><div class="meta"><span class="nm">Vert</span><span class="hx">#00E676</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--cyan)"></div><div class="meta"><span class="nm">Cyan</span><span class="hx">#19E6E6</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--blue)"></div><div class="meta"><span class="nm">Bleu</span><span class="hx">#3D6BFF</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--magenta)"></div><div class="meta"><span class="nm">Magenta</span><span class="hx">#FF36C9</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--white)"></div><div class="meta"><span class="nm">Blanc</span><span class="hx">#F4F6FF</span></div></div>
+      </div>
+
+      <div class="palette" style="margin-top:14px">
+        <div class="swatch"><div class="chip" style="background:var(--bg)"></div><div class="meta"><span class="nm">Fond Minitel</span><span class="hx">#0A0B2E</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--bg-2)"></div><div class="meta"><span class="nm">Fond 2</span><span class="hx">#12134A</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--black)"></div><div class="meta"><span class="nm">Encre noire</span><span class="hx">#05050F</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--ink-dim)"></div><div class="meta"><span class="nm">Encre att&eacute;nu&eacute;e</span><span class="hx">#9AA0D8</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 03 — TYPOGRAPHIE ===================== -->
+  <section id="typo">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">03</span>
+        <h2 class="sec-title">TYPOGRAPHIE</h2>
+      </div>
+      <p class="sec-desc">
+        Gros contraste : titres pixel chunky « Press Start 2P », corps mono rétro. Un fort écart
+        d'échelle entre l'écran-titre et le texte courant.
+      </p>
+
+      <div class="type-grid">
+        <div class="typecard">
+          <span class="label">Titres &mdash; Press Start 2P</span>
+          <div class="spec-pixel">
+            NEUF VIES
+            <small>&#9608; 8-BIT &middot; CHUNKY &middot; ECRAN-TITRE</small>
+          </div>
+          <div class="glyphs">A B C D E F G<br>0 1 2 3 4 5 6 7 8 9<br>&#8984; &#8963; &#8679; &#8629; &#9658; &#9608;</div>
+        </div>
+
+        <div class="typecard">
+          <span class="label">Corps &mdash; Space Mono / VT323</span>
+          <div class="spec-body">
+            <h4>Un vrai terminal, sans friction.</h4>
+            <p>Le corps de texte reste en mono lisible &agrave; bon contraste. superkitty
+            corrige les frictions du quotidien : sessions persistantes, panes,
+            drag &amp; drop, palette de commandes.</p>
+          </div>
+          <div class="spec-crt">&gt; claude --resume &nbsp;&#9608;<br>&gt; 3615 SUPERKITTY EN LIGNE</div>
+        </div>
+      </div>
+
+      <div class="typecard" style="margin-top:18px">
+        <span class="label">&Eacute;chelle modulaire</span>
+        <div class="scale-row"><span>HERO</span><span class="spec-pixel" style="font-size:22px">SUPERKITTY</span></div>
+        <div class="scale-row"><span>TITRE</span><span class="spec-pixel" style="font-size:15px">SECTION</span></div>
+        <div class="scale-row"><span>LABEL</span><span style="font-family:var(--pixel2);font-weight:700;font-size:13px;letter-spacing:1px">SOUS-TITRE MENU</span></div>
+        <div class="scale-row"><span>CORPS</span><span style="font-family:var(--body);font-size:16px">Texte courant en Space Mono.</span></div>
+        <div class="scale-row"><span>TERM</span><span style="font-family:var(--crt);font-size:22px;color:var(--green)">&gt; sortie console VT323</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 04 — COMPOSANTS ===================== -->
+  <section id="composants">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">04</span>
+        <h2 class="sec-title">COMPOSANTS</h2>
+      </div>
+      <p class="sec-desc">
+        Boutons d'arcade à ombre dure, champs à curseur bloc, fenêtres de pane façon UI 8-bit.
+        Coins carrés, bordures épaisses, zéro dégradé.
+      </p>
+
+      <div class="comp-grid">
+        <div class="panel">
+          <p class="ptitle">&#9658; Boutons arcade</p>
+          <div class="btnrow">
+            <button class="btn primary">Nouveau pane</button>
+            <button class="btn">Layout suivant</button>
+            <button class="btn danger">Tuer session</button>
+          </div>
+          <div class="btnrow">
+            <button class="btn ghost">&#8984;K Palette</button>
+            <button class="btn ghost">&#8984;B Sessions</button>
+          </div>
+
+          <div class="field">
+            <label>Commande</label>
+            <div class="input">&gt; claude --resume<span class="cur"></span></div>
+          </div>
+
+          <div class="field">
+            <label>Activit&eacute; de l'agent</label>
+            <div class="meter">
+              <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="background:var(--bg)">
+          <p class="ptitle">&#9636; Fen&ecirc;tre de pane</p>
+          <div class="pane">
+            <div class="bar">
+              <span class="dot" style="background:var(--red)"></span>
+              <span class="dot" style="background:var(--yellow)"></span>
+              <span class="dot" style="background:var(--green)"></span>
+              <span class="ttl">superkitty-p2</span>
+              <span class="right">&#9679; attach&eacute;</span>
+            </div>
+            <div class="body">
+              <span class="c-c">~/dev/superkitty</span> <span class="c-d">(main)</span><br>
+              <span class="c-g">&gt;</span> claude<br>
+              <span class="c-m">&#9608;</span> R&eacute;flexion en cours&hellip;<br>
+              <span class="c-y">&#9650;</span> <span class="imgtag">[Image #1]</span> re&ccedil;ue<br>
+              <span class="c-g">&gt;</span> <span class="blkcur">&nbsp;</span>
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+            <span class="tag c" style="box-shadow:var(--shadow-sm)">tall</span>
+            <span class="tag m" style="box-shadow:var(--shadow-sm)">stack</span>
+            <span class="tag y" style="box-shadow:var(--shadow-sm)">grid</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 05 — MOCK TERMINAL ===================== -->
+  <section id="terminal">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">05</span>
+        <h2 class="sec-title">TERMINAL COULEUR</h2>
+      </div>
+      <p class="sec-desc">
+        Mise en situation : un run Claude qui survit à une fermeture, réattaché avec son
+        scrollback. Couleurs CRT, curseur bloc, scanlines.
+      </p>
+
+      <div class="term">
+        <div class="chrome">
+          <div class="lights">
+            <i style="background:var(--red)"></i>
+            <i style="background:var(--yellow)"></i>
+            <i style="background:var(--green)"></i>
+          </div>
+          <span class="name">SUPERKITTY &mdash; tmux: superkitty-p1</span>
+          <div class="tabs">
+            <span class="act">superkitty</span>
+            <span>api</span>
+            <span>docs</span>
+            <span>+</span>
+          </div>
+        </div>
+        <div class="screen">
+<span class="l c-d">$ # fenetre ferm&eacute;e hier soir... le run continuait dans tmux</span>
+<span class="l c-g">$ open -a superkitty</span>
+<span class="l c-c">&#9658; r&eacute;attachement de superkitty-p1 &mdash; scrollback restaur&eacute;</span>
+<span class="l c-d">  ...</span>
+<span class="l c-m">&#9608; claude</span> <span class="c-w">Je termine le refactor du module pty.rs.</span>
+<span class="l c-y">&#9650; [Image #1]</span> <span class="c-d">capture coll&eacute;e &rarr; ~/.superkitty/dropped/</span>
+<span class="l c-b">&#9783; tool</span> <span class="c-w">edit src-tauri/src/pty.rs  (+18 -4)</span>
+<span class="l c-g">&#10003; build OK</span> <span class="c-d">&middot; cargo check &middot; 1.8s</span>
+<span class="l c-r">&#9788; notif</span> <span class="c-w">L'agent a fini &mdash; cloche &amp; badge sur le pane.</span>
+<span class="l c-g">$</span> <span class="blkcur">&nbsp;</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 06 — LAYOUTS ===================== -->
+  <section id="layouts">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">06</span>
+        <h2 class="sec-title">LAYOUTS kitty</h2>
+      </div>
+      <p class="sec-desc">
+        Six dispositions auto-équilibrées, portées de kitty. Le pane focus est teinté magenta.
+        Chaque ajout/fermeture recalcule tous les rectangles.
+      </p>
+
+      <div class="layouts">
+        <div class="lay">
+          <div class="mini" style="grid-template-columns:1.4fr 1fr;grid-template-rows:1fr 1fr">
+            <i class="f" style="grid-row:span 2"></i><i></i><i></i>
+          </div>
+          <span class="nm">tall</span>
+        </div>
+        <div class="lay">
+          <div class="mini" style="grid-template-rows:1.4fr 1fr;grid-template-columns:1fr 1fr">
+            <i class="f" style="grid-column:span 2"></i><i></i><i></i>
+          </div>
+          <span class="nm">fat</span>
+        </div>
+        <div class="lay">
+          <div class="mini" style="grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr">
+            <i class="f"></i><i></i><i></i><i></i>
+          </div>
+          <span class="nm">grid</span>
+        </div>
+        <div class="lay">
+          <div class="mini" style="grid-template-columns:1fr 1fr 1fr">
+            <i class="f"></i><i></i><i></i>
+          </div>
+          <span class="nm">horizontal</span>
+        </div>
+        <div class="lay">
+          <div class="mini" style="grid-template-rows:1fr 1fr 1fr">
+            <i class="f"></i><i></i><i></i>
+          </div>
+          <span class="nm">vertical</span>
+        </div>
+        <div class="lay">
+          <div class="mini" style="position:relative;grid-template-columns:1fr">
+            <i class="f" style="box-shadow:5px 5px 0 var(--cyan), 10px 10px 0 var(--blue)"></i>
+          </div>
+          <span class="nm">stack</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="foot">
+    <div class="wrap">
+      <p class="big">SUPERKITTY &#9829; 9 VIES</p>
+      <div class="mosaic-strip" style="margin:0">
+        <i style="background:var(--magenta)"></i>
+        <i style="background:var(--blue)"></i>
+        <i style="background:var(--cyan)"></i>
+        <i style="background:var(--green)"></i>
+        <i style="background:var(--yellow)"></i>
+        <i style="background:var(--orange)"></i>
+        <i style="background:var(--red)"></i>
+        <i style="background:var(--white)"></i>
+      </div>
+
+      <div class="cols">
+        <div>
+          <h5>Le projet</h5>
+          <p>Émulateur de terminal macOS dédié à Claude Code. Vrai PTY, sessions tmux qui
+          survivent à la fermeture, panes kitty, drag &amp; drop d'images. Bâti
+          friction-first : chaque palier supprime une douleur.</p>
+          <span class="m3615">3615 SUPERKITTY</span>
+        </div>
+        <div>
+          <h5>Frictions tu&eacute;es</h5>
+          <ul>
+            <li>Sessions persistantes</li>
+            <li>Drag &amp; drop d'images</li>
+            <li>UI propre « Claude mode »</li>
+            <li>Panes &amp; layouts kitty</li>
+          </ul>
+        </div>
+        <div>
+          <h5>Raccourcis</h5>
+          <ul>
+            <li>&#8984;K &mdash; Palette</li>
+            <li>&#8984;P &mdash; Fichiers</li>
+            <li>&#8984;B &mdash; Sessions</li>
+            <li>&#8984;&#8679;T &mdash; Rouvrir</li>
+            <li>&#8963;&#96; &mdash; Quake</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="copyr">&#9612;&#9612; Charte « Mosaïque » &middot; pixel / Minitel-télétexte &middot; macOS only &middot; &copy; superkitty</p>
+    </div>
+  </footer>
+
+</body>
+</html>
