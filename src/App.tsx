@@ -1267,10 +1267,13 @@ function App() {
           return done(e, () => focusDirection("up"));
         case "ArrowDown":
           return done(e, () => focusDirection("down"));
-        default:
-          if (key >= "1" && key <= "9") {
-            return done(e, () => gotoTab(Number(key) - 1)); // goto_tab
-          }
+        default: {
+          // Touche physique de la rangée de chiffres : "Digit1".."Digit9".
+          // On se base sur e.code (et pas e.key) pour que ça marche aussi sur
+          // AZERTY, où ⌘ + la touche « 1 » produit e.key === "&".
+          const m = e.code.match(/^Digit([1-9])$/);
+          if (m) return done(e, () => gotoTab(Number(m[1]) - 1)); // goto_tab
+        }
       }
     };
 
