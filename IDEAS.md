@@ -17,7 +17,7 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
 - **#1 Rouvrir le dernier fermé** (`⌘⇧T`, historique persisté, pane **et** onglet).
 - **#12 Palette de commandes** (`⌘K`, fuzzy, + sessions tmux).
 - **#11 Menu clic droit** (réutilise la palette).
-- **#3 Settings** (`⌘,`, thèmes xterm live, police, toggle notifs, cheat-sheet).
+- **#3 Settings** (`⌘,` ou ⚙ titlebar, panneau 2 volets : thèmes xterm live, police, toggle notifs, raccourcis réassignables).
 - **#6 Notifications fin d'agent** (BEL → badge onglet/pane + notif macOS `osascript`).
 - **#7 Nouveau pane = login shell frais** (`$SHELL -l`, ignoré au réattach).
 - **#15 Picker de fichiers** (`⌘P`, `git ls-files`) + drag de tout fichier.
@@ -60,11 +60,11 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
 
 > Un panneau de réglages pour changer vite l'apparence et les shortcuts.
 
-- [x] Panneau Settings (modale), ouvrable via `⌘,`.
+- [x] Panneau Settings (modale **à 2 volets** : rail de catégories à gauche, contenu à droite), ouvrable via `⌘,` **ou le bouton ⚙ de la barre de titre** (en face des onglets).
 - [x] **Thèmes** : choisir un thème xterm (couleurs, fond, curseur), preview en direct.
   - [x] Quelques thèmes intégrés (Superkitty, Tokyo Night, Solarized Dark/Light, GitHub Light).
   - [x] Police + taille de police.
-- [~] **Raccourcis** : voir (cheat-sheet dans Settings) ✓ ; remapper pas encore.
+- [x] **Raccourcis** : voir (référence groupée + recherche) **et remapper** — chaque action a des chords réassignables (capture clavier, conflits gérés, réinitialisation), alimentés par une source unique (`src/shortcuts.ts`), persistés dans `localStorage` (`superkitty.keys.v1`).
 - [x] Persister les settings dans `localStorage` (`superkitty.settings.v1`).
 - [x] Appliquer à chaud sans redémarrer (props `theme/font` → `term.options`, sans recréer le terminal).
 
@@ -266,12 +266,13 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
 
 - [x] **Renommer un onglet** (double-clic sur le titre, ou palette), titre persistant.
 - [ ] **Renommer une fenêtre/pane** de la même façon (remplace les `p1/p2`).
-- [ ] **Changer la couleur** d'un onglet / d'un pane à la main (palette de couleurs).
-- [x] **Code-couleur automatique par projet** : teinte dérivée du `cwd` ; onglet (point) + bordure du pane focus (`--pane-accent`) la prennent → repérage immédiat.
+- [~] **Changer la couleur à la main** : onglet ✓ (clic-droit → palette `TabColorPicker`, s'applique à tout l'onglet) ; pane individuel pas encore.
+  - [x] Couleur par défaut **distincte par onglet** (palette `TAB_COLORS`, `pickTabColor` évite les doublons) — plus de répétition à l'ouverture.
+- [x] **Code-couleur automatique par projet** : teinte dérivée du `cwd` (fallback des onglets legacy sans couleur) ; onglet (point) + bordure du pane focus (`--pane-accent`) la prennent → repérage immédiat.
   - [x] Déduire la couleur du chemin du projet (hash `cwd` → teinte HSL).
 - [~] Titre auto par défaut : nom du dossier (`cwd`) ✓ ; + branche git pas encore.
-- [x] Persister le titre dans `localStorage` (la teinte est dérivée, pas stockée).
-- [~] Réglages/édition : double-clic ✓ ; depuis Settings/clic-droit pas encore.
+- [x] Persister le titre **et la couleur** dans `localStorage` (couleur assignée stockée sur l'onglet).
+- [~] Réglages/édition : double-clic (renommer) ✓ + clic-droit (couleur) ✓ ; depuis Settings pas encore.
 
 ## 18. Nouveau pane = même dossier courant (hériter le `cwd`)
 
@@ -353,6 +354,19 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
 - [ ] Réglage on/off dans les Settings (idée 3) pour les masquer entièrement.
 - [ ] (relié aux idées 10 « numéros d'onglets », 11 « menu clic droit » et 12 « palette `⌘K` » :
       même objectif de découvrabilité ; la palette peut aussi servir de cheat sheet vivante.)
+
+## 23. Zoomer le terminal (`⌘+` / `⌘-` / `⌘0`)
+
+> Aujourd'hui on ne peut pas grossir/réduire la taille du texte à la volée : il faut passer
+> par les Settings (idée 3) pour changer la taille de police, et `⌘+` / `⌘-` ne font rien.
+> Je veux les raccourcis standards macOS pour zoomer directement, **sinon ça ne marche pas**.
+
+- [ ] **`⌘+`** (agrandir) / **`⌘-`** (réduire) ajustent la taille de police xterm en direct,
+      sur le pane focus (ou tous les panes ? à trancher).
+- [ ] **`⌘0`** remet la taille par défaut.
+- [ ] Persister la taille choisie (réutiliser le réglage `fontSize` des Settings, idée 3).
+- [ ] (optionnel) un petit contrôle visuel de zoom (boutons +/− quelque part) en complément
+      des raccourcis.
 
 ---
 
