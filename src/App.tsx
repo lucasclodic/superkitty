@@ -16,7 +16,7 @@ import { FilePicker } from "./FilePicker";
 import { Scratchpad } from "./Scratchpad";
 import { PromptComposer } from "./PromptComposer";
 import { QuickPrompt } from "./QuickPrompt";
-import { SkSettings, loadSettings, saveSettings, themeOf } from "./themes";
+import { SkSettings, loadSettings, saveSettings, themeOf, DEFAULT_SETTINGS } from "./themes";
 import {
   Bindings,
   buildLookup,
@@ -1090,6 +1090,19 @@ function App() {
 
   const toggleSidebar = () => setSidebarOpen((o) => !o);
 
+  // ---- Zoom du texte (idée #23) : ⌘+/⌘-/⌘0 ----
+  // Réutilise le réglage global `fontSize` (mêmes bornes que loadSettings/FontPane,
+  // 8–32). setSettings déclenche la persistance + l'application live dans chaque pane.
+  const FONT_MIN = 8;
+  const FONT_MAX = 32;
+  const zoomFont = (d: number) =>
+    setSettings((s) => ({
+      ...s,
+      fontSize: Math.min(FONT_MAX, Math.max(FONT_MIN, s.fontSize + d)),
+    }));
+  const resetFont = () =>
+    setSettings((s) => ({ ...s, fontSize: DEFAULT_SETTINGS.fontSize }));
+
   // Locate the pane (if any) currently driving a given tmux session name.
   const paneForSession = (
     s: AppState,
@@ -1319,6 +1332,18 @@ function App() {
         return;
       }
 
+      // Text zoom (idea #23) is matched by CHARACTER (e.key), not physical key
+      // (e.code), so it works on AZERTY and QWERTY alike: the "-"/"=" keys sit at
+      // different physical positions per layout (on a French Mac the "-" key is
+      // at code "Equal"), which is why an e.code binding zoomed the wrong way.
+      // ⌘+/⌘= enlarge, ⌘-/⌘_ shrink, ⌘0 resets. ⌘0 uses e.code (digit row needs
+      // Shift on AZERTY), consistent with ⌘1–9 tab navigation.
+      if (e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.key === "+" || e.key === "=") return done(e, () => zoomFont(1));
+        if (e.key === "-" || e.key === "_") return done(e, () => zoomFont(-1));
+        if (e.code === "Digit0") return done(e, resetFont);
+      }
+
       // Everything else is dispatched through the (reassignable) binding table.
       // An unbound chord falls through without preventDefault, so the terminal
       // still receives it.
@@ -1521,6 +1546,9 @@ function App() {
       keywords: name,
       run: () => setLayout(name),
     })),
+    { id: "zoom-in", group: "Affichage", title: "Agrandir le texte", keywords: "zoom police taille font agrandir", hint: "⌘+", run: () => zoomFont(1) },
+    { id: "zoom-out", group: "Affichage", title: "Réduire le texte", keywords: "zoom police taille font réduire", hint: "⌘-", run: () => zoomFont(-1) },
+    { id: "zoom-reset", group: "Affichage", title: "Taille du texte par défaut", keywords: "zoom police taille font reset défaut", hint: "⌘0", run: resetFont },
     { id: "sidebar", group: "Sessions", title: "Afficher / masquer les sessions tmux", hint: "⌘B", run: toggleSidebar },
     { id: "settings", group: "Général", title: "Réglages (thème, police…)", hint: "⌘,", run: () => setSettingsOpen(true) },
     { id: "file-picker", group: "Fichier", title: "Insérer un chemin de fichier…", keywords: "@ mention path fichier", hint: "⌘P", run: () => openFilePicker() },

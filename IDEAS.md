@@ -361,12 +361,19 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
 > par les Settings (idée 3) pour changer la taille de police, et `⌘+` / `⌘-` ne font rien.
 > Je veux les raccourcis standards macOS pour zoomer directement, **sinon ça ne marche pas**.
 
-- [ ] **`⌘+`** (agrandir) / **`⌘-`** (réduire) ajustent la taille de police xterm en direct,
-      sur le pane focus (ou tous les panes ? à trancher).
-- [ ] **`⌘0`** remet la taille par défaut.
-- [ ] Persister la taille choisie (réutiliser le réglage `fontSize` des Settings, idée 3).
-- [ ] (optionnel) un petit contrôle visuel de zoom (boutons +/− quelque part) en complément
-      des raccourcis.
+- [x] **`⌘+`** / **`⌘=`** (agrandir) / **`⌘-`** / **`⌘_`** (réduire) ajustent la taille de police xterm
+      en direct, sur **tous les panes** (tranché : zoom global, comme Terminal.app/iTerm ; réutilise
+      le réglage `fontSize`, bornes 8–32 px).
+- [x] **`⌘0`** remet la taille par défaut (14 px, `DEFAULT_SETTINGS.fontSize`).
+- [x] Persister la taille choisie (réutilise le réglage `fontSize` des Settings, idée 3 → `superkitty.settings.v1`).
+- [x] ⚠️ **AZERTY/QWERTY** : le zoom est résolu par **caractère** (`e.key` = `+`/`-`/`=`/`_`), **pas** par
+      position physique (`e.code`) — sinon sur Mac AZERTY la touche « - » (placée au `code` `Equal`)
+      inversait le sens. `⌘0` reste sur `e.code === "Digit0"` (la rangée des chiffres réclame Maj sur
+      AZERTY), cohérent avec `⌘1–9`. Du coup ces 3 raccourcis ne sont **pas** dans la liste réassignable
+      (`ACTIONS`) — la réassignation par position n'a pas de sens pour `+`/`-` multi-claviers — mais
+      restent dans la palette `⌘K` (logique dans `App.onKeyDown`).
+- [~] (optionnel) un petit contrôle visuel de zoom (boutons +/− quelque part) en complément
+      des raccourcis — le **stepper des Settings** (panneau Police) joue déjà ce rôle ; pas de bouton flottant.
 
 ---
 

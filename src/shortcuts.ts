@@ -163,6 +163,10 @@ export const ACTIONS: ActionMeta[] = [
   // --- Disposition ---
   { id: "next-layout", group: "Disposition", label: "Disposition suivante", defaultChords: ["C+S+KeyL"] },
 
+  // Note : le zoom du texte (⌘+/⌘-/⌘0, idée #23) n'est PAS ici : il est résolu
+  // par caractère (e.key) et non par position physique (e.code) dans le listener
+  // de App.tsx, pour marcher sur AZERTY comme QWERTY (cf. App.onKeyDown).
+
   // --- Défilement ---
   { id: "scroll-line-up", group: "Défilement", label: "Défiler d'une ligne (haut)", defaultChords: ["C+S+ArrowUp"] },
   { id: "scroll-line-down", group: "Défilement", label: "Défiler d'une ligne (bas)", defaultChords: ["C+S+ArrowDown"] },
