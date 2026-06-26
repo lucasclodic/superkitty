@@ -100,7 +100,7 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
   - [x] Piste : guetter la cloche du terminal (`BEL` 0x07) → octet détecté dans le thread lecteur → event `pty://bell/<id>`.
   - [ ] Piste : détecter le retour au prompt / l'inactivité (non nécessaire, le BEL suffit).
 - [x] Notification système macOS (via `osascript`).
-- [x] Badge visuel sur l'onglet/pane concerné quand il n'est pas focus : **traînée lumineuse** verte qui encadre le pane (conic-gradient animé + halo), persistante **jusqu'au clic** dans le pane (effacée dans `setFocus`).
+- [x] Badge visuel sur l'onglet/pane concerné quand il n'est pas focus : **traînée lumineuse aux couleurs du ruban superkitty** qui encadre le pane (conic-gradient animé + halo), persistante **jusqu'à ce que tu engages le pane** — clic/focus (`setFocus`) ou frappe dans le pane (`onInteract`) ; le retour sur l'app (⌘Tab) ne l'efface pas.
 - [x] Petit **son** quand un agent termine (commande Rust `play_sound` → `afplay` du son système « Glass »), réglable indépendamment.
 - [x] Ne notifier que pour les panes non-actifs (pas celui que je regarde + fenêtre focus).
 - [x] Réglage notifications on/off et **son** on/off (dans Settings → Notifications). Pas de passage au premier plan forcé (volontaire).

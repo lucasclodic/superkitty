@@ -5,8 +5,9 @@
   --text: #e4e2e8;
   --text-dim: #8b879c;
   --accent: #c9a9ff;
-  /* Glow around a pane whose agent just finished, until you click it (idea #6). */
-  --finish-glow: #5fd08a;
+  /* Cadre neutre du pane « agent terminé » ; la traînée rotative porte les
+     couleurs du ruban superkitty (idée #6). */
+  --finish-glow: rgba(233, 232, 240, 0.6);
 
   /* Ruban six-couleurs « superkitty » (charte Platinum Noir) */
   --rb-green: #6fb36a;
@@ -608,9 +609,10 @@ body {
   filter: grayscale(0.2);
 }
 
-/* A pane whose agent just finished and you haven't clicked yet (idea #6): the
-   frame keeps a soft green glow with a bright light "trail" circling it. The
-   glow is cleared the moment you click the pane (see setFocus in App.tsx). */
+/* A pane whose agent just finished and you haven't engaged it yet (idea #6): a
+   soft neutral frame plus a bright "trail" in the superkitty ribbon colours
+   circling it. Cleared the moment you click or type in the pane (see setFocus /
+   onInteract in App.tsx). */
 @property --sk-trail {
   syntax: "<angle>";
   initial-value: 0deg;
@@ -631,9 +633,14 @@ body {
   background: conic-gradient(
     from var(--sk-trail),
     transparent 0deg,
-    transparent 270deg,
-    var(--finish-glow) 325deg,
-    rgba(255, 255, 255, 0.95) 350deg,
+    transparent 188deg,
+    var(--rb-green) 220deg,
+    var(--rb-yellow) 248deg,
+    var(--rb-orange) 276deg,
+    var(--rb-red) 304deg,
+    var(--rb-purple) 330deg,
+    var(--rb-blue) 350deg,
+    rgba(255, 255, 255, 0.92) 357deg,
     transparent 360deg
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box,
@@ -653,11 +660,11 @@ body {
   0%,
   100% {
     box-shadow: 0 0 0 1px var(--finish-glow),
-      0 0 10px 0 rgba(95, 208, 138, 0.35);
+      0 0 10px 0 rgba(201, 169, 255, 0.25);
   }
   50% {
     box-shadow: 0 0 0 1px var(--finish-glow),
-      0 0 20px 3px rgba(95, 208, 138, 0.6);
+      0 0 20px 3px rgba(201, 169, 255, 0.4);
   }
 }
 

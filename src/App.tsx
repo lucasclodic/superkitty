@@ -1017,9 +1017,9 @@ function App() {
       prev.tabs[i] ? { ...prev, activeTabId: prev.tabs[i].id } : prev,
     );
 
-  // Clear a pane's "agent finished" glow (idea #6). Called whenever the pane
-  // becomes the one you're actually looking at — by click, keyboard nav, tab
-  // switch or refocusing the app — mirroring kitty's focus_changed() clear.
+  // Clear a pane's "agent finished" glow (idea #6). Called when you actually
+  // engage the pane — click/keyboard-focus it (setFocus) or type into it
+  // (onInteract). Coming back to the app alone does NOT clear it.
   const clearActivity = (paneId: string) => {
     setActivity((prev) => {
       if (!prev.has(paneId)) return prev;
@@ -1044,19 +1044,6 @@ function App() {
     clearActivity(activePane);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePane, state.activeTabId]);
-
-  // Coming back to the app (⌘Tab, Quake ⌃`, clicking the window) while the
-  // active pane is already glowing also counts as "looking at it".
-  useEffect(() => {
-    const onWinFocus = () => {
-      const s = stateRef.current;
-      const p = s.tabs.find((x) => x.id === s.activeTabId)?.focused;
-      if (p) clearActivity(p);
-    };
-    window.addEventListener("focus", onWinFocus);
-    return () => window.removeEventListener("focus", onWinFocus);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Open the file picker (⌘P) on the focused pane's working directory (idea #15).
   const openFilePicker = async () => {
@@ -1586,9 +1573,10 @@ function App() {
     state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
   const termTheme = themeOf(settings);
 
-  // The "agent finished" glow (idea #6) is cleared only by clicking the pane
-  // (see setFocus) — bringing the window forward must NOT silently dismiss it,
-  // so there is deliberately no clear-on-window-focus effect here.
+  // The "agent finished" glow (idea #6) is cleared by engaging the pane —
+  // clicking/focusing it (setFocus) or typing into it (onInteract). Bringing
+  // the window forward (⌘Tab/Quake) must NOT dismiss it, so there is
+  // deliberately no clear-on-window-focus effect.
 
   // Tab name/tint helpers (idea #17): manual title → project folder → number;
   // tint hashed from the cwd so a repo always reads the same colour.
@@ -1866,6 +1854,7 @@ function App() {
                       active={t.id === state.activeTabId && id === t.focused}
                       onFocus={() => setFocus(id)}
                       onBell={() => handleBell(id)}
+                      onInteract={() => clearActivity(id)}
                       cwd={spawnCwdRef.current[id]}
                       session={state.sessions[id]}
                       sandbox={!!sandboxed[id]}

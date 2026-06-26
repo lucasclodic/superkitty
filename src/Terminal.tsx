@@ -18,6 +18,7 @@ export function TerminalView({
   active,
   onFocus,
   onBell,
+  onInteract,
   cwd,
   session,
   sandbox,
@@ -31,6 +32,9 @@ export function TerminalView({
   // Fired when this pane emits a terminal bell (BEL) — Claude Code rings it when
   // it finishes / awaits input (idea #6).
   onBell?: () => void;
+  // Fired on real user input in this pane (keystrokes/paste) — used to clear the
+  // "agent finished" glow as soon as you interact, not merely on window focus (#6).
+  onInteract?: () => void;
   // Directory to start a freshly-created tmux session in (inherited from the
   // source pane on ⌘D/⌘T). Ignored when re-attaching an existing session.
   cwd?: string;
@@ -213,6 +217,7 @@ export function TerminalView({
     })();
 
     const dataDisposable = term.onData((data) => {
+      onInteract?.();
       invoke("pty_write", { id, data });
     });
     let redrawTimer = 0;
