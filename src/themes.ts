@@ -10,6 +10,8 @@ export interface SkSettings {
   fontSize: number;
   /** macOS notification when an unwatched pane's agent finishes (idea #6). */
   notify: boolean;
+  /** Play a short sound when an unwatched pane's agent finishes (idea #6). */
+  notifySound: boolean;
 }
 
 export const DEFAULT_FONT =
@@ -20,6 +22,7 @@ export const DEFAULT_SETTINGS: SkSettings = {
   fontFamily: DEFAULT_FONT,
   fontSize: 14,
   notify: true,
+  notifySound: true,
 };
 
 /** A few monospace stacks offered in the Settings font picker. */
@@ -190,6 +193,7 @@ export function loadSettings(): SkSettings {
             ? s.fontSize
             : DEFAULT_SETTINGS.fontSize,
         notify: typeof s.notify === "boolean" ? s.notify : true,
+        notifySound: typeof s.notifySound === "boolean" ? s.notifySound : true,
       };
     }
   } catch {

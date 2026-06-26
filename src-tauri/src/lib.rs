@@ -84,6 +84,7 @@ pub fn run() {
             pty::tmux_list_sessions,
             pty::tmux_kill_session,
             pty::notify,
+            pty::play_sound,
             pty::save_image,
             pty::list_files,
         ])

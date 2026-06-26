@@ -1008,8 +1008,46 @@ function App() {
       prev.tabs[i] ? { ...prev, activeTabId: prev.tabs[i].id } : prev,
     );
 
-  const setFocus = (paneId: string) =>
+  // Clear a pane's "agent finished" glow (idea #6). Called whenever the pane
+  // becomes the one you're actually looking at — by click, keyboard nav, tab
+  // switch or refocusing the app — mirroring kitty's focus_changed() clear.
+  const clearActivity = (paneId: string) => {
+    setActivity((prev) => {
+      if (!prev.has(paneId)) return prev;
+      const n = new Set(prev);
+      n.delete(paneId);
+      return n;
+    });
+  };
+
+  const setFocus = (paneId: string) => {
     updateActiveTab((t) => ({ ...t, focused: paneId }));
+    clearActivity(paneId);
+  };
+
+  // The active pane (active tab + its focused pane) clears its glow as soon as
+  // you're looking at it, whatever got you there — keyboard nav, tab switch, or
+  // a plain click. Gated on document.hasFocus() so the glow survives while the
+  // app is in the background (kitty's focus_changed only fires when focused).
+  const activePane = state.tabs.find((t) => t.id === state.activeTabId)?.focused;
+  useEffect(() => {
+    if (!activePane || !document.hasFocus()) return;
+    clearActivity(activePane);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePane, state.activeTabId]);
+
+  // Coming back to the app (⌘Tab, Quake ⌃`, clicking the window) while the
+  // active pane is already glowing also counts as "looking at it".
+  useEffect(() => {
+    const onWinFocus = () => {
+      const s = stateRef.current;
+      const p = s.tabs.find((x) => x.id === s.activeTabId)?.focused;
+      if (p) clearActivity(p);
+    };
+    window.addEventListener("focus", onWinFocus);
+    return () => window.removeEventListener("focus", onWinFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Open the file picker (⌘P) on the focused pane's working directory (idea #15).
   const openFilePicker = async () => {
@@ -1070,6 +1108,10 @@ function App() {
       n.add(paneId);
       return n;
     });
+    // Audible cue (idea #6) — independent of the macOS notification toggle.
+    if (settings.notifySound) {
+      invoke("play_sound", { name: "Submarine" }).catch(() => {});
+    }
     if (!settings.notify) return;
     const idx = s.tabs.findIndex((x) => x.panes.includes(paneId));
     invoke("notify", {
@@ -1499,23 +1541,9 @@ function App() {
     state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
   const termTheme = themeOf(settings);
 
-  // Clear a pane's activity badge once you actually look at it (it becomes the
-  // active tab's focused pane while the window is focused), and on window focus.
-  const activeFocusedPane = activeTab?.focused;
-  useEffect(() => {
-    const clear = () => {
-      if (!document.hasFocus() || !activeFocusedPane) return;
-      setActivity((prev) => {
-        if (!prev.has(activeFocusedPane)) return prev;
-        const n = new Set(prev);
-        n.delete(activeFocusedPane);
-        return n;
-      });
-    };
-    clear();
-    window.addEventListener("focus", clear);
-    return () => window.removeEventListener("focus", clear);
-  }, [activeFocusedPane]);
+  // The "agent finished" glow (idea #6) is cleared only by clicking the pane
+  // (see setFocus) — bringing the window forward must NOT silently dismiss it,
+  // so there is deliberately no clear-on-window-focus effect here.
 
   // Tab name/tint helpers (idea #17): manual title → project folder → number;
   // tint hashed from the cwd so a repo always reads the same colour.
@@ -1780,7 +1808,7 @@ function App() {
                     key={id}
                     className={`pane-slot${
                       id === dropTargetId ? " dropTarget" : ""
-                    }`}
+                    }${activity.has(id) ? " finished" : ""}`}
                     style={{
                       left: `${r.x * 100}%`,
                       top: `${r.y * 100}%`,
@@ -1801,12 +1829,6 @@ function App() {
                       fontFamily={settings.fontFamily}
                       fontSize={settings.fontSize}
                     />
-                    {activity.has(id) && (
-                      <span
-                        className="pane-activity"
-                        title="Activité — un agent a sonné dans cette fenêtre"
-                      />
-                    )}
                     {sandboxed[id] && (
                       <span
                         className="pane-sandbox"

@@ -693,6 +693,27 @@ pub fn notify(title: String, body: String) {
         .status();
 }
 
+/// Play a short system sound (idea #6) when an agent finishes. Best-effort:
+/// `afplay` is macOS-only and runs detached so it never blocks the UI thread.
+/// `name` is a bare macOS system-sound name (e.g. "Glass", "Hero"); we look it
+/// up under /System/Library/Sounds and silently no-op if it's missing.
+#[tauri::command]
+pub fn play_sound(name: String) {
+    // Keep it to a known-safe basename so the string can't escape the dir.
+    let safe: String = name
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect();
+    if safe.is_empty() {
+        return;
+    }
+    let path = format!("/System/Library/Sounds/{safe}.aiff");
+    if !std::path::Path::new(&path).exists() {
+        return;
+    }
+    let _ = std::process::Command::new("afplay").arg(&path).spawn();
+}
+
 /// List every tmux session known to the server (idea #2). Returns an empty list
 /// when no tmux server is running (nothing to attach to yet).
 #[tauri::command]

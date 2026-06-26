@@ -18,7 +18,7 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
 - **#12 Palette de commandes** (`⌘K`, fuzzy, + sessions tmux).
 - **#11 Menu clic droit** (réutilise la palette).
 - **#3 Settings** (`⌘,` ou ⚙ titlebar, panneau 2 volets : thèmes xterm live, police, toggle notifs, raccourcis réassignables).
-- **#6 Notifications fin d'agent** (BEL → badge onglet/pane + notif macOS `osascript`).
+- **#6 Notifications fin d'agent** (BEL → traînée lumineuse autour du pane jusqu'au clic + son `afplay` + notif macOS `osascript`).
 - **#7 Nouveau pane = login shell frais** (`$SHELL -l`, ignoré au réattach).
 - **#15 Picker de fichiers** (`⌘P`, `git ls-files`) + drag de tout fichier.
 - **#4 Coller image** (`⌘V` → sauve dans `~/.superkitty/dropped/` → injecte).
@@ -100,9 +100,10 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
   - [x] Piste : guetter la cloche du terminal (`BEL` 0x07) → octet détecté dans le thread lecteur → event `pty://bell/<id>`.
   - [ ] Piste : détecter le retour au prompt / l'inactivité (non nécessaire, le BEL suffit).
 - [x] Notification système macOS (via `osascript`).
-- [x] Badge visuel (point pulsant) sur l'onglet/pane concerné quand il n'est pas focus.
+- [x] Badge visuel sur l'onglet/pane concerné quand il n'est pas focus : **traînée lumineuse** verte qui encadre le pane (conic-gradient animé + halo), persistante **jusqu'au clic** dans le pane (effacée dans `setFocus`).
+- [x] Petit **son** quand un agent termine (commande Rust `play_sound` → `afplay` du son système « Glass »), réglable indépendamment.
 - [x] Ne notifier que pour les panes non-actifs (pas celui que je regarde + fenêtre focus).
-- [~] Réglage notifications on/off (fait, dans Settings) ; son on/off pas encore.
+- [x] Réglage notifications on/off et **son** on/off (dans Settings → Notifications). Pas de passage au premier plan forcé (volontaire).
 
 ## 7. Nouveau shell = shell frais (comme kitty)
 

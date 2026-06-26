@@ -5,6 +5,8 @@
   --text: #e4e2e8;
   --text-dim: #8b879c;
   --accent: #c9a9ff;
+  /* Glow around a pane whose agent just finished, until you click it (idea #6). */
+  --finish-glow: #5fd08a;
 
   /* Ruban six-couleurs « superkitty » (charte Platinum Noir) */
   --rb-green: #6fb36a;
@@ -606,28 +608,56 @@ body {
   filter: grayscale(0.2);
 }
 
-/* Pulsing badge on a pane that rang its bell while unwatched (idea #6). */
-.pane-activity {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--accent);
-  z-index: 6;
-  pointer-events: none;
-  animation: sk-pulse 1.6s ease-out infinite;
+/* A pane whose agent just finished and you haven't clicked yet (idea #6): the
+   frame keeps a soft green glow with a bright light "trail" circling it. The
+   glow is cleared the moment you click the pane (see setFocus in App.tsx). */
+@property --sk-trail {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
 }
-@keyframes sk-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(201, 169, 255, 0.5);
+.pane-slot.finished .terminal-pane {
+  border-color: var(--finish-glow);
+  animation: sk-finish-pulse 1.8s ease-in-out infinite;
+}
+/* Trail lives on the slot, not the pane: .terminal-pane has overflow:hidden and
+   would clip a frame drawn just outside its border. */
+.pane-slot.finished::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 9px;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--sk-trail),
+    transparent 0deg,
+    transparent 270deg,
+    var(--finish-glow) 325deg,
+    rgba(255, 255, 255, 0.95) 350deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: sk-trail-rotate 2.4s linear infinite;
+  pointer-events: none;
+  z-index: 7;
+}
+@keyframes sk-trail-rotate {
+  to {
+    --sk-trail: 360deg;
   }
-  70% {
-    box-shadow: 0 0 0 8px rgba(201, 169, 255, 0);
-  }
+}
+@keyframes sk-finish-pulse {
+  0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(201, 169, 255, 0);
+    box-shadow: 0 0 0 1px var(--finish-glow),
+      0 0 10px 0 rgba(95, 208, 138, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 1px var(--finish-glow),
+      0 0 20px 3px rgba(95, 208, 138, 0.6);
   }
 }
 
@@ -1166,6 +1196,15 @@ body {
   height: 16px;
   accent-color: var(--accent);
   cursor: pointer;
+}
+.settings-toggle + .settings-toggle {
+  margin-top: 10px;
+}
+.settings-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-dim);
 }
 
 .shortcut-h4 {

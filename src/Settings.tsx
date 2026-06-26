@@ -226,6 +226,20 @@ function NotificationsPane({
           Notifier (macOS) quand un agent termine dans une fenêtre non regardée
         </span>
       </label>
+      <label className="settings-toggle">
+        <input
+          type="checkbox"
+          checked={settings.notifySound}
+          onChange={(e) =>
+            onChange({ ...settings, notifySound: e.target.checked })
+          }
+        />
+        <span>Jouer un petit son quand un agent termine</span>
+      </label>
+      <p className="settings-hint">
+        Le pane concerné s'entoure d'une traînée lumineuse jusqu'à ce que tu
+        cliques dedans.
+      </p>
     </section>
   );
 }
