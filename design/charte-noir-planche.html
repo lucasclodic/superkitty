@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>superkitty — Charte « Platinum Noir » · planche design-system</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   superkitty — Charte graphique « Platinum Noir »
+   Variation MISE EN FORME : planche / poster de design-system
+   Grille de modules (bento) — tokens & ambiance INCHANGÉS
+   ============================================================ */
+
+:root {
+  /* —— Ruban six-couleurs « superkitty » (maison, pensé pour le fond sombre) —— */
+  --rb-green:  #6FB36A;  /* Sauge */
+  --rb-yellow: #F0C04E;  /* Ambre */
+  --rb-orange: #EE965A;  /* Abricot */
+  --rb-red:    #E2685E;  /* Corail */
+  --rb-purple: #A87FC4;  /* Prune */
+  --rb-blue:   #54AEC0;  /* Paon */
+
+  /* —— Graphite / anthracite chaud (Platinum nocturne) —— */
+  --bg:          #1C1A17;
+  --bg-2:        #211E1A;
+  --panel:       #26241F;
+  --panel-2:     #2E2B25;
+  --panel-3:     #38342D;
+  --cream:       #EAE5D6;
+  --cream-soft:  #C4BEAD;
+  --cream-faint: #8E897A;
+
+  /* —— Biseaux inversés discrets (Platinum sombre) —— */
+  --bevel-hi:  rgba(255,250,235,.07);
+  --bevel-lo:  rgba(0,0,0,.45);
+  --bevel-edge:#3D392F;
+  --bevel-edge2:#15130F;
+
+  /* —— Terminal (quasi le même fond que la page) —— */
+  --term-bg:  #181612;
+  --term-fg:  #EAE5D6;
+  --term-dim: #8A8474;
+
+  /* —— Typo —— */
+  --brand: "EB Garamond", "Apple Garamond", Garamond, "Times New Roman", serif;
+  --pixel: "Silkscreen", "Chicago", monospace;
+  --mono:  Monaco, "Cascadia Mono", "SF Mono", Menlo, monospace;
+
+  --radius: 9px;
+  --shadow: 0 10px 30px rgba(0,0,0,.45);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: var(--brand);
+  color: var(--cream);
+  background-color: var(--bg);
+  background-image:
+    repeating-linear-gradient(0deg,
+      rgba(255,255,255,.012) 0px, rgba(255,255,255,.012) 1px,
+      transparent 1px, transparent 4px),
+    radial-gradient(1200px 620px at 82% -8%, rgba(84,174,192,.10), transparent 60%),
+    radial-gradient(960px 540px at -8% 108%, rgba(168,127,196,.09), transparent 60%),
+    radial-gradient(800px 500px at 110% 70%, rgba(226,104,94,.05), transparent 60%);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+/* grain overlay discret */
+body::after {
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: .25;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+/* ===== Cadre de planche ===== */
+.sheet { max-width: 1240px; margin: 0 auto; padding: 26px 26px 64px; }
+
+.reveal { opacity: 0; transform: translateY(12px); animation: rise .6s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+
+/* ===== Filets / ruban / divider partagés ===== */
+.stripe {
+  border-radius: 4px; overflow: hidden;
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  box-shadow: var(--shadow), 0 0 0 1px rgba(0,0,0,.4), 0 0 22px rgba(120,140,160,.14);
+}
+.stripe i { display: block; }
+.stripe .c1 { background: var(--rb-green); }
+.stripe .c2 { background: var(--rb-yellow); }
+.stripe .c3 { background: var(--rb-orange); }
+.stripe .c4 { background: var(--rb-red); }
+.stripe .c5 { background: var(--rb-purple); }
+.stripe .c6 { background: var(--rb-blue); }
+
+.rule { height: 3px; border: 0; margin: 0; border-radius: 2px;
+  background: linear-gradient(90deg,
+    var(--rb-green), var(--rb-yellow), var(--rb-orange),
+    var(--rb-red), var(--rb-purple), var(--rb-blue));
+  box-shadow: 0 0 16px rgba(120,140,160,.25); }
+
+/* ruban-liant vertical qui court d'un module à l'autre */
+.spine { width: 6px; border-radius: 3px;
+  background: linear-gradient(180deg,
+    var(--rb-green), var(--rb-yellow), var(--rb-orange),
+    var(--rb-red), var(--rb-purple), var(--rb-blue));
+  box-shadow: 0 0 16px rgba(120,140,160,.22); }
+
+/* ===== En-tête / cartouche de planche ===== */
+.cartouche {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--bevel-edge);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 0 var(--bevel-hi) inset, 0 -1px 0 var(--bevel-lo) inset, var(--shadow);
+  padding: 18px 24px; margin-bottom: 18px;
+  position: relative; overflow: hidden;
+}
+.cartouche .topbar { position:absolute; inset:0 0 auto 0; height:5px;
+  background: linear-gradient(90deg,
+    var(--rb-green), var(--rb-yellow), var(--rb-orange),
+    var(--rb-red), var(--rb-purple), var(--rb-blue));
+  box-shadow: 0 0 16px rgba(120,140,160,.3); }
+.cartouche .mark { width: 60px; height: 60px; display:block;
+  filter: drop-shadow(0 5px 14px rgba(0,0,0,.5)); margin-top: 4px; }
+.cartouche .ident h1 {
+  font-family: var(--brand); font-weight: 500; font-style: italic;
+  font-size: clamp(40px, 7vw, 64px); line-height: .92; margin: 0;
+  letter-spacing: -.5px;
+  background: linear-gradient(100deg,
+    var(--rb-green) 0%, var(--rb-yellow) 20%, var(--rb-orange) 40%,
+    var(--rb-red) 60%, var(--rb-purple) 80%, var(--rb-blue) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 26px rgba(120,140,160,.18));
+}
+.cartouche .kicker {
+  font-family: var(--pixel); font-size: 9px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--cream-faint); margin-bottom: 7px; }
+.cartouche .tag { font-size: 17px; color: var(--cream-soft); font-style: italic; margin: 8px 0 0; max-width: 56ch; }
+.cartouche .meta { display: grid; gap: 7px; text-align: right; align-self: stretch; }
+.meta-row { font-family: var(--pixel); font-size: 8.5px; letter-spacing: 1px;
+  color: var(--cream-faint); display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+.meta-row b { color: var(--cream); font-weight: 700; }
+.meta-row .dot { width:6px; height:6px; border-radius:50%; background: var(--rb-green);
+  box-shadow: 0 0 8px rgba(111,179,106,.6); }
+
+/* ===== La grille bento ===== */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* module générique (panneau Platinum sombre, biseau inversé) */
+.mod {
+  position: relative;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border-radius: var(--radius);
+  border: 1px solid var(--bevel-edge);
+  box-shadow: 0 1px 0 var(--bevel-hi) inset, 0 -1px 0 var(--bevel-lo) inset, var(--shadow);
+  padding: 18px 18px 20px;
+}
+/* en-tête de module : numéro + titre + légende */
+.mod-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.mod-num { font-family: var(--pixel); font-size: 9px; color: var(--rb-red);
+  border: 1.5px solid rgba(226,104,94,.55); border-radius: 4px; padding: 2px 5px;
+  box-shadow: 0 0 12px rgba(226,104,94,.18); flex: none; }
+.mod-title { font-family: var(--brand); font-style: italic; font-weight: 500;
+  font-size: 22px; margin: 0; letter-spacing: -.3px; color: var(--cream); line-height: 1; }
+.mod-cap { font-family: var(--pixel); font-size: 8px; letter-spacing: 1px;
+  color: var(--cream-faint); margin-left: auto; flex: none; align-self: center; }
+.mod-desc { color: var(--cream-soft); font-size: 15px; margin: 0 0 14px; }
+.mod-desc b { color: var(--cream); }
+
+/* tailles de modules contrastées */
+.col2 { grid-column: span 2; }
+.col3 { grid-column: span 3; }
+.col4 { grid-column: span 4; }
+.col6 { grid-column: span 6; }
+
+/* ===== Palette (nuancier compact) ===== */
+.swgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sw { border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--bevel-edge);
+  box-shadow: 0 1px 0 var(--bevel-hi) inset, 0 -1px 0 var(--bevel-lo) inset, var(--shadow);
+  background: var(--panel); }
+.sw .chip { height: 46px; box-shadow: 0 0 24px rgba(0,0,0,.25) inset; }
+.sw .meta { padding: 6px 9px; font-family: var(--mono); font-size: 10px; }
+.sw .meta b { display: block; font-family: var(--brand); font-size: 12.5px; font-style: italic;
+  font-weight: 600; margin-bottom: 1px; color: var(--cream); }
+.sw .meta span { color: var(--cream-faint); }
+
+/* neutres : nuancier carré dense */
+.neutgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.neutgrid .sw .chip { height: 38px; }
+
+/* ===== Typo specimen compact ===== */
+.type-row { display: grid; grid-template-columns: 88px 1fr; gap: 14px; align-items: baseline;
+  padding: 11px 0; border-bottom: 1px dashed var(--panel-3); }
+.type-row:first-of-type { padding-top: 2px; }
+.type-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.type-label { font-family: var(--pixel); font-size: 8px; color: var(--cream-soft);
+  letter-spacing: 1px; line-height: 1.7; }
+.type-label span { display: block; color: var(--cream-faint); }
+.t-brand { font-family: var(--brand); }
+.t-mono  { font-family: var(--mono); }
+.t-pixel { font-family: var(--pixel); }
+
+/* ===== Boutons / contrôles ===== */
+.controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.btn {
+  font-family: var(--brand); font-size: 15px; color: var(--cream);
+  padding: 6px 16px; border-radius: 14px; cursor: pointer;
+  background: linear-gradient(#34302A, #25221D);
+  border: 1px solid var(--bevel-edge2);
+  box-shadow: 0 1px 0 var(--bevel-hi) inset, 0 -2px 3px var(--bevel-lo) inset, 0 2px 6px rgba(0,0,0,.4);
+  transition: transform .05s, box-shadow .05s;
+}
+.btn:active { transform: translate(0,1px); box-shadow: 0 2px 5px rgba(0,0,0,.5) inset; }
+.btn-default { position: relative; padding: 8px 24px; font-weight: 600; border-radius: 16px;
+  box-shadow: 0 1px 0 var(--bevel-hi) inset, 0 -2px 3px var(--bevel-lo) inset, 0 0 18px rgba(120,140,160,.2); }
+.btn-default::before {
+  content: ""; position: absolute; inset: -5px; border-radius: 20px;
+  padding: 3px; background: linear-gradient(120deg,
+    var(--rb-green), var(--rb-yellow), var(--rb-orange),
+    var(--rb-red), var(--rb-purple), var(--rb-blue));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(120,140,160,.35));
+}
+.btn-rb {
+  color: #1a1713; font-weight: 600; border: 0;
+  background: linear-gradient(110deg, var(--rb-red), var(--rb-purple), var(--rb-blue));
+  text-shadow: 0 1px 0 rgba(255,255,255,.2);
+  box-shadow: 0 2px 10px rgba(0,0,0,.4), 0 0 20px rgba(120,140,160,.18);
+}
+.checkrow { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 16px;
+  font-size: 15px; color: var(--cream-soft); }
+.mac-check { width: 16px; height: 16px; display: inline-grid; place-items: center;
+  background: linear-gradient(#2E2B25,#24211C); border: 1px solid var(--bevel-edge2);
+  border-radius: 4px; box-shadow: 0 1px 0 var(--bevel-hi) inset, 0 -1px 0 var(--bevel-lo) inset;
+  font-family: var(--pixel); font-size: 10px; color: var(--rb-blue); }
+.mac-radio { width: 16px; height: 16px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #34302A, #201D18);
+  border: 1px solid var(--bevel-edge2); box-shadow: 0 1px 0 var(--bevel-hi) inset; position: relative;
+  display: inline-block; vertical-align: middle; }
+.mac-radio.on::after { content:""; position:absolute; inset:4px; border-radius:50%;
+  background: var(--rb-blue); box-shadow: 0 0 8px rgba(84,174,192,.5); }
+.field { display: flex; flex-direction: column; gap: 5px; margin-top: 16px; }
+.field label { font-family: var(--pixel); font-size: 8px; letter-spacing: 1px; color: var(--cream-faint); }
+.field input { font-family: var(--mono); font-size: 13px; padding: 7px 9px; color: var(--cream);
+  background: #15130F; border: 1px solid var(--bevel-edge2); border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.45) inset; outline: none; }
+.field input:focus { box-shadow: 0 0 0 2px var(--rb-blue), 0 0 14px rgba(84,174,192,.3),
+  0 2px 4px rgba(0,0,0,.45) inset; }
+
+/* ===== Fenêtre Mac (réduite) ===== */
+.mac-win { border-radius: var(--radius); overflow: hidden; background: var(--panel);
+  border: 1px solid var(--bevel-edge2);
+  box-shadow: var(--shadow), 0 22px 60px rgba(0,0,0,.55); }
+.titlebar {
+  height: 24px; display: flex; align-items: center; padding: 0 8px; gap: 8px;
+  background: linear-gradient(#2F2C25, #232019);
+  border-bottom: 1px solid var(--bevel-edge2);
+  box-shadow: 0 1px 0 var(--bevel-hi) inset; position: relative;
+}
+.titlebar .lines { position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px);
+  opacity: .5; }
+.close-box { width: 12px; height: 12px; border-radius: 3px; z-index: 1;
+  background: linear-gradient(#34302A,#201D18); border: 1px solid var(--bevel-edge2);
+  box-shadow: 0 1px 0 var(--bevel-hi) inset; }
+.win-title { z-index: 1; margin: 0 auto; font-family: var(--pixel); font-size: 9px;
+  color: var(--cream-soft); background: var(--panel); padding: 0 12px; letter-spacing: .5px; }
+.win-body { padding: 14px; background: var(--bg-2); }
+.win-body p { color: var(--cream-soft); margin: 0; font-size: 14.5px; }
+
+/* ===== Terminal mock (grand module) ===== */
+.term { background: var(--term-bg); color: var(--term-fg); font-family: var(--mono);
+  font-size: 13px; line-height: 1.55; padding: 16px 18px; min-height: 252px; }
+.term .p { color: var(--rb-green); }
+.term .path { color: var(--rb-blue); }
+.term .pr { color: var(--rb-purple); }
+.term .star { color: var(--rb-orange); }
+.term .dim { color: var(--term-dim); }
+.term .ok { color: var(--rb-green); }
+.term .warn { color: var(--rb-yellow); }
+.term b { color: var(--cream); }
+.term .cursor { display:inline-block; width:8px; height:15px; background: var(--rb-green);
+  vertical-align:-2px; box-shadow: 0 0 8px rgba(111,179,106,.6);
+  animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ===== Tokens ===== */
+.tokens { font-family: var(--mono); font-size: 11.5px; line-height: 1.85;
+  background: var(--term-bg); color: var(--term-fg); padding: 16px 18px; border-radius: 8px;
+  overflow-x: auto; border: 1px solid var(--bevel-edge); box-shadow: var(--shadow); }
+.tokens .k { color: var(--rb-yellow); }
+.tokens .v { color: var(--rb-blue); }
+.tokens .cm { color: var(--term-dim); font-style: italic; }
+
+/* ===== Features (mini-cartes raccourcis) ===== */
+.feat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.fcard { padding: 13px 13px 14px; border-radius: 8px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--bevel-edge);
+  box-shadow: 0 1px 0 var(--bevel-hi) inset, 0 -1px 0 var(--bevel-lo) inset; }
+.fcard .kbd { font-family: var(--pixel); font-size: 9px; color: var(--rb-blue);
+  border: 1px solid var(--bevel-edge); border-radius: 4px; padding: 2px 5px;
+  display: inline-block; margin-bottom: 8px; letter-spacing: .5px;
+  box-shadow: 0 0 10px rgba(84,174,192,.12); }
+.fcard h3 { font-family: var(--brand); font-style: italic; font-weight: 600;
+  font-size: 17px; margin: 0 0 4px; color: var(--cream); }
+.fcard p { margin: 0; font-size: 13.5px; color: var(--cream-soft); line-height: 1.4; }
+
+/* ===== Raccourcis clavier (liste serrée) ===== */
+.keys { display: grid; gap: 7px; }
+.keyrow { display: flex; align-items: baseline; gap: 10px; justify-content: space-between;
+  border-bottom: 1px dashed var(--panel-3); padding-bottom: 6px; }
+.keyrow:last-child { border-bottom: 0; padding-bottom: 0; }
+.keyrow .lbl { font-size: 14px; color: var(--cream-soft); }
+.keyrow kbd { font-family: var(--pixel); font-size: 9px; color: var(--cream);
+  background: linear-gradient(#34302A,#25221D); border: 1px solid var(--bevel-edge2);
+  border-radius: 5px; padding: 3px 7px; white-space: nowrap;
+  box-shadow: 0 1px 0 var(--bevel-hi) inset, 0 -1px 0 var(--bevel-lo) inset; }
+
+/* pied de planche */
+.foot { display:flex; align-items:center; gap:16px; margin-top: 20px;
+  color: var(--cream-soft); font-style: italic; font-size: 14px; }
+.foot .stripe { flex: 1; height: 10px; }
+
+@media (max-width: 1000px) {
+  .bento { grid-template-columns: repeat(4, 1fr); }
+  .col4, .col6 { grid-column: span 4; }
+  .col3 { grid-column: span 2; }
+}
+@media (max-width: 720px) {
+  .bento { grid-template-columns: 1fr; }
+  .col2, .col3, .col4, .col6 { grid-column: span 1; }
+  .cartouche { grid-template-columns: 1fr; text-align: left; }
+  .cartouche .meta { text-align: left; }
+  .meta-row { justify-content: flex-start; }
+  .feat, .swgrid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="sheet">
+
+  <!-- ===== CARTOUCHE / EN-TÊTE DE PLANCHE ===== -->
+  <header class="cartouche reveal" style="animation-delay:.04s">
+    <div class="topbar"></div>
+    <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <linearGradient id="rbMark" gradientUnits="userSpaceOnUse" x1="0" y1="6" x2="0" y2="94">
+          <stop offset="0"     stop-color="#6FB36A"/><stop offset=".1666" stop-color="#6FB36A"/>
+          <stop offset=".1666" stop-color="#F0C04E"/><stop offset=".3333" stop-color="#F0C04E"/>
+          <stop offset=".3333" stop-color="#EE965A"/><stop offset=".5"     stop-color="#EE965A"/>
+          <stop offset=".5"     stop-color="#E2685E"/><stop offset=".6666" stop-color="#E2685E"/>
+          <stop offset=".6666" stop-color="#A87FC4"/><stop offset=".8333" stop-color="#A87FC4"/>
+          <stop offset=".8333" stop-color="#54AEC0"/><stop offset="1"      stop-color="#54AEC0"/>
+        </linearGradient>
+      </defs>
+      <path fill="url(#rbMark)" d="M16 12 L33 38 Q50 29 67 38 L84 12 L89 53 Q86 80 63 91 Q50 97 37 91 Q14 80 11 53 Q11 31 16 12 Z"/>
+    </svg>
+    <div class="ident">
+      <div class="kicker">Charte graphique · planche design-system · mode sombre</div>
+      <h1>superkitty</h1>
+      <p class="tag">« Six couleurs dans la nuit, neuf vies. » — le terminal graphite qui ne perd jamais ta session.</p>
+    </div>
+    <div class="meta">
+      <div class="meta-row"><span>RÉFÉRENCE</span> <b>PLATINUM&nbsp;NOIR</b></div>
+      <div class="meta-row"><span>VERSION</span> <b>v1.0</b></div>
+      <div class="meta-row"><span>PLATEFORME</span> <b>macOS</b></div>
+      <div class="meta-row"><span>DATE</span> <b>25.06.2026</b></div>
+      <div class="meta-row"><span class="dot"></span> <b>À VALIDER</b></div>
+    </div>
+  </header>
+
+  <!-- ===== GRILLE BENTO ===== -->
+  <div class="bento">
+
+    <!-- 01 — Concept (large) -->
+    <section class="mod col4 reveal" style="animation-delay:.08s">
+      <div class="mod-head">
+        <span class="mod-num">01</span>
+        <h2 class="mod-title">L'idée — Platinum, la nuit</h2>
+        <span class="mod-cap">concept</span>
+      </div>
+      <p class="mod-desc">
+        La <b>sœur nocturne</b> de la charte beige : tout le vocabulaire du <b>Macintosh « Platinum »</b>
+        — fenêtre Mac, boutons « lozenge » biseautés, rayures fines, ruban six-couleurs — transposé en
+        <b>graphite / anthracite chaud</b>. Les biseaux deviennent <b>inversés et discrets</b> (highlight
+        sombre en haut, ombre dessous). L'<b>arc-en-ciel maison</b> (six teintes, <i>pas</i> les hexes
+        d'Apple) rayonne doucement sur le fond sombre. <b>friction-first</b>, macOS, dédié à Claude Code :
+        kitty, le chat aux <b>neuf vies</b>.
+      </p>
+      <hr class="rule" />
+    </section>
+
+    <!-- Tagline / mark (carré) -->
+    <section class="mod col2 reveal" style="animation-delay:.1s">
+      <div class="mod-head">
+        <span class="mod-num">·</span>
+        <h2 class="mod-title">Signature</h2>
+        <span class="mod-cap">mark + ruban</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:14px">
+        <svg viewBox="0 0 100 100" style="width:46px;height:46px;flex:none;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5))" aria-hidden="true">
+          <path fill="url(#rbMark)" d="M16 12 L33 38 Q50 29 67 38 L84 12 L89 53 Q86 80 63 91 Q50 97 37 91 Q14 80 11 53 Q11 31 16 12 Z"/>
+        </svg>
+        <div style="font-family:var(--brand);font-style:italic;font-size:18px;color:var(--cream-soft);line-height:1.25">
+          Le chat aux six couleurs<br>remplace la pomme.
+        </div>
+      </div>
+      <div class="stripe" style="height:16px">
+        <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><i class="c5"></i><i class="c6"></i>
+      </div>
+    </section>
+
+    <!-- 02 — Palette (large) -->
+    <section class="mod col3 reveal" style="animation-delay:.12s">
+      <div class="mod-head">
+        <span class="mod-num">02</span>
+        <h2 class="mod-title">Palette</h2>
+        <span class="mod-cap">6 teintes maison</span>
+      </div>
+      <p class="mod-desc">Ravivées pour <b>ressortir sur le sombre</b> — accents & tints par onglet/projet.</p>
+      <div class="swgrid">
+        <div class="sw"><div class="chip" style="background:var(--rb-green)"></div><div class="meta"><b>Sauge</b><span>#6FB36A</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--rb-yellow)"></div><div class="meta"><b>Ambre</b><span>#F0C04E</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--rb-orange)"></div><div class="meta"><b>Abricot</b><span>#EE965A</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--rb-red)"></div><div class="meta"><b>Corail</b><span>#E2685E</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--rb-purple)"></div><div class="meta"><b>Prune</b><span>#A87FC4</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--rb-blue)"></div><div class="meta"><b>Paon</b><span>#54AEC0</span></div></div>
+      </div>
+    </section>
+
+    <!-- 03 — Neutres (étroit) -->
+    <section class="mod col3 reveal" style="animation-delay:.14s">
+      <div class="mod-head">
+        <span class="mod-num">03</span>
+        <h2 class="mod-title">Neutres graphite</h2>
+        <span class="mod-cap">anthracite + crème</span>
+      </div>
+      <p class="mod-desc">Graphite chaud pour le chrome, crème pour le texte. Page & terminal partagent presque le même fond.</p>
+      <div class="neutgrid">
+        <div class="sw"><div class="chip" style="background:var(--bg)"></div><div class="meta"><b>Graphite</b><span>#1C1A17</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--panel)"></div><div class="meta"><b>Panneau</b><span>#26241F</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--panel-3)"></div><div class="meta"><b>Panneau +</b><span>#38342D</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--term-bg)"></div><div class="meta"><b>Terminal</b><span>#181612</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--cream)"></div><div class="meta"><b>Crème</b><span>#EAE5D6</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--cream-faint)"></div><div class="meta"><b>Crème −</b><span>#8E897A</span></div></div>
+      </div>
+    </section>
+
+    <!-- 04 — Typo (large) -->
+    <section class="mod col4 reveal" style="animation-delay:.16s">
+      <div class="mod-head">
+        <span class="mod-num">04</span>
+        <h2 class="mod-title">Typographie</h2>
+        <span class="mod-cap">3 voix</span>
+      </div>
+      <div class="type-row">
+        <div class="type-label">MARQUE<span>EB Garamond · italic</span></div>
+        <div class="t-brand" style="font-style:italic;font-size:30px;line-height:1.05;color:var(--cream)">Un terminal graphite aux six couleurs.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">CORPS<span>EB Garamond</span></div>
+        <div class="t-brand" style="font-size:16px;color:var(--cream-soft)">Closing the window never kills your session — tmux keeps it alive, and reopening reattaches the live Claude run.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">CODE<span>Monaco · mono</span></div>
+        <div class="t-mono" style="font-size:14px;color:var(--cream)">superkitty ~ % claude --resume</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label">ÉTIQUETTES<span>Silkscreen</span></div>
+        <div class="t-pixel" style="font-size:12px;color:var(--cream-soft)">FICHIER · ÉDITION · FENÊTRE · ⌘K PALETTE</div>
+      </div>
+    </section>
+
+    <!-- 05 — Composants : boutons (étroit) -->
+    <section class="mod col2 reveal" style="animation-delay:.18s">
+      <div class="mod-head">
+        <span class="mod-num">05</span>
+        <h2 class="mod-title">Composants</h2>
+        <span class="mod-cap">CSS pur</span>
+      </div>
+      <div class="controls">
+        <button class="btn btn-default">Ouvrir</button>
+        <button class="btn">Annuler</button>
+      </div>
+      <div class="controls" style="margin-top:14px">
+        <button class="btn btn-rb">Nouvelle session</button>
+      </div>
+      <div class="checkrow">
+        <span><span class="mac-check">✓</span> Sandbox</span>
+        <span><span class="mac-radio on"></span> tmux</span>
+        <span><span class="mac-radio"></span> raw</span>
+      </div>
+      <div class="field">
+        <label>NOM DE SESSION</label>
+        <input type="text" value="superkitty-p1" spellcheck="false" />
+      </div>
+    </section>
+
+    <!-- 06 — Terminal (TRÈS large, 4 col) -->
+    <section class="mod col4 reveal" style="animation-delay:.2s">
+      <div class="mod-head">
+        <span class="mod-num">06</span>
+        <h2 class="mod-title">Le terminal</h2>
+        <span class="mod-cap">cœur du produit</span>
+      </div>
+      <p class="mod-desc">Fond graphite quasi identique à la page, texte crème, accents ANSI mappés sur l'arc-en-ciel maison qui rayonne dans le noir.</p>
+      <div class="mac-win">
+        <div class="titlebar">
+          <div class="lines"></div>
+          <span class="close-box"></span>
+          <span class="win-title">superkitty — ~/Dev/superkitty — claude</span>
+        </div>
+        <div class="term">
+          <div><span class="p">lucas@superkitty</span> <span class="path">~/Dev/superkitty</span> <span class="pr">%</span> claude</div>
+          <div>&nbsp;</div>
+          <div><span class="star">✻</span> Welcome to <b>Claude Code</b></div>
+          <div class="dim">  /help for help · cwd: ~/Dev/superkitty</div>
+          <div>&nbsp;</div>
+          <div><span class="ok">●</span> Lecture de <span class="path">src/App.tsx</span> <span class="dim">(412 lignes)</span></div>
+          <div><span class="warn">●</span> Édition de <span class="path">src/themes.ts</span> <span class="dim">+1 thème « Platinum Noir »</span></div>
+          <div><span class="ok">✓</span> Type-check OK · <span class="dim">0 erreur</span></div>
+          <div class="dim">  session tmux superkitty-p1 — détachée, toujours vivante</div>
+          <div>&nbsp;</div>
+          <div><span class="pr">%</span> <span class="cursor"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 — Fenêtre Mac + Tokens empilés (étroit) -->
+    <section class="mod col2 reveal" style="animation-delay:.22s">
+      <div class="mod-head">
+        <span class="mod-num">07</span>
+        <h2 class="mod-title">Fenêtre Mac</h2>
+        <span class="mod-cap">Platinum sombre</span>
+      </div>
+      <div class="mac-win">
+        <div class="titlebar">
+          <div class="lines"></div>
+          <span class="close-box"></span>
+          <span class="win-title">À propos de superkitty</span>
+        </div>
+        <div class="win-body">
+          <p>Barre de titre à rayures fines, case de fermeture carrée, coins arrondis, relief Platinum inversé.</p>
+          <div class="stripe" style="margin-top:12px;height:12px">
+            <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><i class="c5"></i><i class="c6"></i>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 — Design tokens (large) -->
+    <section class="mod col3 reveal" style="animation-delay:.24s">
+      <div class="mod-head">
+        <span class="mod-num">08</span>
+        <h2 class="mod-title">Design tokens</h2>
+        <span class="mod-cap">App.css · themes.ts</span>
+      </div>
+      <div class="tokens">
+<span class="cm">/* App.css — chrome Platinum Noir */</span><br>
+<span class="k">--rb-green</span>: <span class="v">#6FB36A</span>; <span class="k">--rb-yellow</span>: <span class="v">#F0C04E</span>;<br>
+<span class="k">--rb-orange</span>: <span class="v">#EE965A</span>; <span class="k">--rb-red</span>: <span class="v">#E2685E</span>;<br>
+<span class="k">--rb-purple</span>: <span class="v">#A87FC4</span>; <span class="k">--rb-blue</span>: <span class="v">#54AEC0</span>;<br>
+<span class="k">--bg</span>: <span class="v">#1C1A17</span>; <span class="k">--panel</span>: <span class="v">#26241F</span>; <span class="k">--cream</span>: <span class="v">#EAE5D6</span>;<br>
+<br>
+<span class="cm">// themes.ts — xterm « Platinum Noir »</span><br>
+{ <span class="k">name</span>: <span class="v">"Platinum Noir"</span>,<br>
+&nbsp;&nbsp;<span class="k">background</span>: <span class="v">"#181612"</span>, <span class="k">foreground</span>: <span class="v">"#EAE5D6"</span>,<br>
+&nbsp;&nbsp;<span class="k">cursor</span>: <span class="v">"#6FB36A"</span>, <span class="k">red</span>: <span class="v">"#E2685E"</span>,<br>
+&nbsp;&nbsp;<span class="k">magenta</span>: <span class="v">"#A87FC4"</span>, <span class="k">blue</span>: <span class="v">"#54AEC0"</span> }
+      </div>
+    </section>
+
+    <!-- 09 — Features (large) -->
+    <section class="mod col3 reveal" style="animation-delay:.26s">
+      <div class="mod-head">
+        <span class="mod-num">09</span>
+        <h2 class="mod-title">Features</h2>
+        <span class="mod-cap">friction-first</span>
+      </div>
+      <div class="feat">
+        <div class="fcard">
+          <span class="kbd">tmux</span>
+          <h3>Sessions vivantes</h3>
+          <p>Fermer la fenêtre ne tue jamais la session ; rouvrir réattache le run Claude & le scrollback.</p>
+        </div>
+        <div class="fcard">
+          <span class="kbd">panes</span>
+          <h3>Panes kitty</h3>
+          <p>Layouts tall / fat / grid / horizontal / vertical / stack, auto-équilibrés.</p>
+        </div>
+        <div class="fcard">
+          <span class="kbd">[Image #1]</span>
+          <h3>Drag &amp; drop</h3>
+          <p>Glisse une image : bracketed-paste → Claude affiche <span class="t-mono" style="font-size:12px">[Image #1]</span>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 — Raccourcis clavier (large) -->
+    <section class="mod col3 reveal" style="animation-delay:.28s">
+      <div class="mod-head">
+        <span class="mod-num">10</span>
+        <h2 class="mod-title">Raccourcis</h2>
+        <span class="mod-cap">conventions kitty</span>
+      </div>
+      <div class="keys">
+        <div class="keyrow"><span class="lbl">Palette d'actions</span><kbd>⌘K</kbd></div>
+        <div class="keyrow"><span class="lbl">Picker de fichiers</span><kbd>⌘P</kbd></div>
+        <div class="keyrow"><span class="lbl">Compositeur multi-lignes</span><kbd>⌘E</kbd></div>
+        <div class="keyrow"><span class="lbl">Bloc-notes par onglet</span><kbd>⌃⇧N</kbd></div>
+        <div class="keyrow"><span class="lbl">Sidebar des sessions</span><kbd>⌘B</kbd></div>
+        <div class="keyrow"><span class="lbl">Dropdown Quake global</span><kbd>⌃`</kbd></div>
+        <div class="keyrow"><span class="lbl">Rouvrir un pane fermé</span><kbd>⌘⇧T</kbd></div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ===== PIED DE PLANCHE ===== -->
+  <div class="foot reveal" style="animation-delay:.3s">
+    <div class="stripe">
+      <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><i class="c5"></i><i class="c6"></i>
+    </div>
+    <span>charte « Platinum Noir » · planche · à valider</span>
+  </div>
+
+</div>
+</body>
+</html>

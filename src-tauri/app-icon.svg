@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#242017"/>
+      <stop offset="1" stop-color="#171410"/>
+    </linearGradient>
+    <linearGradient id="ribbon" gradientUnits="userSpaceOnUse" x1="0" y1="6" x2="0" y2="94">
+      <stop offset="0"     stop-color="#6FB36A"/><stop offset=".1666" stop-color="#6FB36A"/>
+      <stop offset=".1666" stop-color="#F0C04E"/><stop offset=".3333" stop-color="#F0C04E"/>
+      <stop offset=".3333" stop-color="#EE965A"/><stop offset=".5"     stop-color="#EE965A"/>
+      <stop offset=".5"     stop-color="#E2685E"/><stop offset=".6666" stop-color="#E2685E"/>
+      <stop offset=".6666" stop-color="#A87FC4"/><stop offset=".8333" stop-color="#A87FC4"/>
+      <stop offset=".8333" stop-color="#54AEC0"/><stop offset="1"      stop-color="#54AEC0"/>
+    </linearGradient>
+  </defs>
+  <!-- Fond squircle graphite « Platinum Noir » -->
+  <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228" fill="url(#bg)"/>
+  <!-- Tête de chat, ruban six-couleurs, centrée (~560px) -->
+  <g transform="translate(232,232) scale(5.6)">
+    <path fill="url(#ribbon)" d="M16 12 L33 38 Q50 29 67 38 L84 12 L89 53 Q86 80 63 91 Q50 97 37 91 Q14 80 11 53 Q11 31 16 12 Z"/>
+  </g>
+</svg>
