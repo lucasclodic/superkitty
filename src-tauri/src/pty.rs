@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
@@ -24,6 +24,11 @@ struct PtyInstance {
     /// The tmux session this PTY is attached to. Usually `superkitty-<id>`, but
     /// can be an adopted external/raw session name (idea #2).
     session_name: String,
+    /// The sink the reader thread streams PTY bytes to. Held behind a swappable
+    /// slot so a webview reload/remount (which reuses the same `id` but creates a
+    /// brand-new `Channel`) can **rewire** the live reader to the new mount's
+    /// channel instead of leaving the fresh xterm with no output ("black pane").
+    output: Arc<Mutex<Channel<InvokeResponseBody>>>,
 }
 
 /// One tmux session as reported by `tmux list-sessions` (idea #2).
@@ -86,10 +91,21 @@ pub fn pty_spawn(
     // reader thread can never deliver into a torn-down pane's handler.
     on_output: Channel<InvokeResponseBody>,
 ) -> Result<(), String> {
-    // If we already have a live PTY for this id, do nothing (avoids double
-    // spawns from React effect re-runs).
-    if state.sessions.lock().unwrap().contains_key(&id) {
-        return Ok(());
+    // If a PTY for this id already exists, don't spawn a second one. Instead
+    // **rewire** its live reader thread to THIS mount's output channel: a webview
+    // reload (Vite HMR) or remount keeps the backend — and the old PtyInstance —
+    // alive (a page reload skips React cleanup, so pty_detach never ran), but the
+    // new xterm created a brand-new Channel. Without rewiring, the reader keeps
+    // streaming to the dead old channel and the fresh pane gets zero bytes → a
+    // black screen that no redraw can cure. After swapping, the frontend's
+    // pty_redraw makes tmux re-send the screen and the pane repaints. (This also
+    // subsumes the old "avoid double spawns from React effect re-runs" guard.)
+    {
+        let sessions = state.sessions.lock().unwrap();
+        if let Some(inst) = sessions.get(&id) {
+            *inst.output.lock().unwrap() = on_output;
+            return Ok(());
+        }
     }
 
     let pty_system = native_pty_system();
@@ -168,6 +184,23 @@ pub fn pty_spawn(
     // the `-c` block so the cwd stays an argument of `new-session`.
     cmd.args([";", "set-option", "mouse", "on"]);
 
+    // Drop any leftover copy-mode on (re)attach. The scrollbar/wheel puts a pane
+    // into tmux copy-mode (#{pane_in_mode}); that mode is per-pane SERVER-side
+    // state and PERSISTS across detach/reattach. If the app is closed while a
+    // pane is scrolled up, reopening reattaches it STILL in copy-mode — the view
+    // is frozen on a (often blank → black) scrollback region and keystrokes are
+    // eaten by copy-mode instead of reaching the shell ("black screen with a
+    // cursor, can't type"). `-X cancel` returns the pane to the live bottom.
+    // Done as a SEPARATE best-effort call (not chained into new-session): on a
+    // live pane it errors with "not in a mode" (exit 1) — harmless here since the
+    // error goes to this child's discarded stderr, but chained it could surface
+    // in the pane. It works for the reattach case even before our own client has
+    // finished attaching, because the session already exists server-side. A
+    // brand-new session isn't in copy-mode, so this is simply a no-op then.
+    let _ = std::process::Command::new("tmux")
+        .args(["send-keys", "-t", &session_name, "-X", "cancel"])
+        .output();
+
     let mut child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
     // Slave handle is owned by the child now; dropping our copy lets EOF
     // propagate correctly when the child exits.
@@ -176,12 +209,18 @@ pub fn pty_spawn(
     let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
     let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
 
+    // Swappable sink: the reader thread sends through whatever channel this slot
+    // currently holds, so a later remount can rewire it (see the early return).
+    let output = Arc::new(Mutex::new(on_output));
+    let output_for_thread = Arc::clone(&output);
+
     state.sessions.lock().unwrap().insert(
         id.clone(),
         PtyInstance {
             writer,
             master: pair.master,
             session_name,
+            output,
         },
     );
 
@@ -199,7 +238,11 @@ pub fn pty_spawn(
                     // the fetch IPC channel (octet-stream, no JSON) — exactly the
                     // large reads a flood produces. Bell/exit below stay on global
                     // events: rare and tiny, so their JSON cost is negligible.
-                    let _ = on_output.send(InvokeResponseBody::Raw(chunk.to_vec()));
+                    // Lock the swappable sink each chunk so a remount's rewire takes
+                    // effect immediately; the lock is uncontended outside that swap.
+                    if let Ok(ch) = output_for_thread.lock() {
+                        let _ = ch.send(InvokeResponseBody::Raw(chunk.to_vec()));
+                    }
                     // A terminal bell (BEL, 0x07) is how Claude Code signals it
                     // finished / is waiting for input. Forward it so the UI can
                     // badge an unwatched pane + fire a macOS notification (#6).
@@ -259,18 +302,25 @@ pub fn pty_resize(
 /// find the single client attached to the session (-D guarantees one) and
 /// `refresh-client` it WITHOUT -S (a -S refresh would only redraw the status
 /// line). Best-effort: failures are ignored (session gone / tmux busy).
+///
+/// Returns `true` only when at least one client was actually found and
+/// refreshed. The frontend uses this to retry on attach: `pty_spawn` returns
+/// *before* the `tmux new-session -A` subprocess has connected its client, so an
+/// early redraw finds no client (returns `false`) and is retried until one is
+/// attached — otherwise the pane can stay permanently blank ("black screen").
 #[tauri::command]
-pub fn pty_redraw(state: State<PtyManager>, id: String) {
+pub fn pty_redraw(state: State<PtyManager>, id: String) -> bool {
     let session_name = resolved_session_name(&state, &id);
     let Ok(out) = std::process::Command::new("tmux")
         .args(["list-clients", "-t", &session_name, "-F", "#{client_name}"])
         .output()
     else {
-        return;
+        return false;
     };
     if !out.status.success() {
-        return;
+        return false;
     }
+    let mut refreshed = false;
     for client in String::from_utf8_lossy(&out.stdout).lines() {
         let client = client.trim();
         if client.is_empty() {
@@ -279,7 +329,9 @@ pub fn pty_redraw(state: State<PtyManager>, id: String) {
         let _ = std::process::Command::new("tmux")
             .args(["refresh-client", "-t", client])
             .status();
+        refreshed = true;
     }
+    refreshed
 }
 
 /// Report the current working directory of a session's active pane, so a new

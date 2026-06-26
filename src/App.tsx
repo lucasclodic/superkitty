@@ -1466,6 +1466,35 @@ function App() {
     };
   }, []);
 
+  // Repaint every live pane when the window comes back to the foreground.
+  // While hidden (Quake ⌃` / minimized / another Space) the webview throttles
+  // requestAnimationFrame, so xterm can be left showing a stale/blank frame with
+  // nothing to repaint it on return. A tmux refresh-client re-sends the full
+  // screen, curing the "frozen black pane" after a show. Best-effort + cheap.
+  useEffect(() => {
+    const redrawAll = () => {
+      for (const t of stateRef.current.tabs)
+        for (const pid of t.panes)
+          invoke("pty_redraw", { id: pid }).catch(() => {});
+    };
+    let un: (() => void) | undefined;
+    let unShown: (() => void) | undefined;
+    let disposed = false;
+    getCurrentWindow()
+      .onFocusChanged(({ payload: focused }) => {
+        if (focused) redrawAll();
+      })
+      .then((f) => (disposed ? f() : (un = f)));
+    listen("quake://shown", redrawAll).then((f) =>
+      disposed ? f() : (unShown = f),
+    );
+    return () => {
+      disposed = true;
+      un?.();
+      unShown?.();
+    };
+  }, []);
+
   const activeTab =
     state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
   const termTheme = themeOf(settings);

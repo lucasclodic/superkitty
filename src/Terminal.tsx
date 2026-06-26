@@ -149,6 +149,43 @@ export function TerminalView({
       pending = [];
     };
 
+    // After (re)attaching, force a full tmux redraw: on a relaunch every pane
+    // reattaches to its existing session at once, and tmux's redraw to the
+    // freshly-attached client can land partial/lost — the pane then stays blank
+    // ("black screen") until something else repaints it. The tmux client
+    // attaches *asynchronously* after pty_spawn returns, so an early redraw runs
+    // before any client exists. pty_redraw returns false in that case; we keep
+    // retrying on a growing backoff until it succeeds (a client was found and
+    // refreshed), then fire one extra redraw as belt-and-suspenders. This is
+    // what fixes the intermittent blank pane: fixed delays could *both* land
+    // before the client attached on a loaded machine, leaving it blank forever.
+    const attachRedrawTimers: number[] = [];
+    const redrawBackoff = [120, 250, 500, 900, 1500, 2400, 3500];
+    let redrawStep = 0;
+    const tryAttachRedraw = () => {
+      if (disposed) return;
+      invoke<boolean>("pty_redraw", { id })
+        .then((done) => {
+          if (disposed) return;
+          if (done) {
+            // Client is attached and was refreshed; one more after a beat
+            // catches any still-partial first paint.
+            attachRedrawTimers.push(
+              window.setTimeout(() => {
+                if (!disposed) invoke("pty_redraw", { id }).catch(() => {});
+              }, 300),
+            );
+            return;
+          }
+          if (redrawStep < redrawBackoff.length) {
+            attachRedrawTimers.push(
+              window.setTimeout(tryAttachRedraw, redrawBackoff[redrawStep++]),
+            );
+          }
+        })
+        .catch(() => {});
+    };
+
     (async () => {
       const offExit = await listen(`pty://exit/${id}`, () => {
         term.write("\r\n\x1b[2m[session ended]\x1b[0m\r\n");
@@ -171,6 +208,8 @@ export function TerminalView({
         sandbox: sandboxRef.current,
         onOutput: outputChannel,
       });
+      if (disposed) return;
+      attachRedrawTimers.push(window.setTimeout(tryAttachRedraw, redrawBackoff[redrawStep++]));
     })();
 
     const dataDisposable = term.onData((data) => {
@@ -217,6 +256,7 @@ export function TerminalView({
       cancelOutput();
       if (raf) cancelAnimationFrame(raf);
       if (redrawTimer) clearTimeout(redrawTimer);
+      attachRedrawTimers.forEach(clearTimeout);
       resizeObserver.disconnect();
       dataDisposable.dispose();
       resizeDisposable.dispose();
