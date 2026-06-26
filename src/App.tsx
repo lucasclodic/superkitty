@@ -113,14 +113,24 @@ const CLOSED_CAP = 25;
 const pushClosed = (closed: ClosedItem[], item: ClosedItem): ClosedItem[] =>
   [...closed, item].slice(-CLOSED_CAP);
 
-/** Type one or more file paths into a pane as a single bracketed paste (ESC[200~
- *  … ESC[201~) so `claude` recognizes dropped/pasted image paths and shows
- *  "[Image #1]" — exactly like Terminal.app/iTerm2/kitty. Shell-special chars
- *  are backslash-escaped so a path with spaces stays one argument. */
+/** Image file extensions claude turns into an "[Image #N]" attachment. */
+const IMAGE_RE = /\.(png|jpe?g|gif|webp|bmp|tiff?|heic|heif|avif|svg|ico)$/i;
+
+/** Type one or more file paths into a pane so `claude` ingests them like
+ *  Terminal.app/iTerm2/kitty. The path is sent **literally** (no shell escaping):
+ *  superkitty targets `claude`, which resolves the real file, so a backslash-
+ *  escaped path (e.g. "Analyse\ Savage\ Step") would fail to resolve.
+ *
+ *  Only **image** paths are sent as a bracketed paste (ESC[200~ … ESC[201~): that
+ *  is what makes claude attach them and show "[Image #1]". A bracketed paste of a
+ *  NON-image path (a folder or other file) makes claude try to attach it and then
+ *  silently drop it (directories aren't attachable) — so those go as plain text,
+ *  which claude inserts as the literal path. */
 function injectPaths(paneId: string, paths: string[]) {
-  const esc = (p: string) => p.replace(/([ "'\\()$&;|<>`*?[\]{}])/g, "\\$1");
   const data =
-    paths.map((p) => `\x1b[200~${esc(p)}\x1b[201~`).join(" ") + " ";
+    paths
+      .map((p) => (IMAGE_RE.test(p) ? `\x1b[200~${p}\x1b[201~` : p))
+      .join(" ") + " ";
   invoke("pty_write", { id: paneId, data });
 }
 
@@ -1455,10 +1465,14 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- paste an image from the clipboard (⌘V) → save + inject (idea #4) ----
-  // A pasted screenshot has no file path, so we save its bytes to
-  // ~/.superkitty/dropped/ via the backend, then inject that path like a drop.
-  // Non-image pastes fall through to the terminal untouched.
+  // ---- paste a file or image from the clipboard (⌘V) → inject path (idea #4) --
+  // Two cases, in priority order:
+  //  1. A real file copied in Finder (⌘C) — the webview only exposes an *image
+  //     preview* of it, so we ask the backend for the actual file URLs on the
+  //     native pasteboard (`clipboard_file_paths`) and inject those real paths.
+  //  2. A pasted screenshot — no file path, so we save its bytes to
+  //     ~/.superkitty/dropped/ and inject that path like a drop.
+  // Plain-text pastes fall through to the terminal untouched.
   useEffect(() => {
     const onPaste = async (e: ClipboardEvent) => {
       // Let our own text fields (composer/scratchpad) handle their own paste.
@@ -1469,16 +1483,48 @@ function App() {
         !ae.closest(".xterm")
       )
         return;
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      const img = Array.from(items).find((it) => it.type.startsWith("image/"));
-      if (!img) return;
-      const blob = img.getAsFile();
-      if (!blob) return;
+      const dt = e.clipboardData;
+      if (!dt) return;
+      // A Finder file/folder copy shows up as a "Files" type (and/or a File item)
+      // on the clipboard, even though the only readable preview is an image/icon.
+      // Detect *any* file item — not just image ones — so a copied folder or
+      // non-image file isn't mistaken for a screenshot and saved as an image.
+      const items = Array.from(dt.items || []);
+      const hasFiles =
+        Array.from(dt.types || []).includes("Files") ||
+        (dt.files && dt.files.length > 0) ||
+        items.some((it) => it.kind === "file");
+      const img = items.find((it) => it.type.startsWith("image/"));
+      if (!hasFiles && !img) return; // plain text → terminal
+      // We're handling this paste ourselves. preventDefault stops the browser
+      // insertion; stopImmediatePropagation stops xterm's OWN paste handler from
+      // ALSO reading the clipboard and injecting it (that double-paste made a
+      // single pasted image show up twice). Both must run synchronously, before
+      // any await.
       e.preventDefault();
+      e.stopImmediatePropagation();
       const s = stateRef.current;
       const paneId = s.tabs.find((t) => t.id === s.activeTabId)?.focused;
       if (!paneId) return;
+      // Prefer real file paths off the native pasteboard (a copied file beats
+      // its image preview).
+      let nativePaths: string[] = [];
+      try {
+        nativePaths = await invoke<string[]>("clipboard_file_paths");
+      } catch (err) {
+        // Surface the failure instead of silently treating it as "no file" — a
+        // thrown command must not be indistinguishable from an empty clipboard.
+        console.error("clipboard_file_paths failed", err);
+        nativePaths = [];
+      }
+      if (nativePaths.length) {
+        injectPaths(paneId, nativePaths);
+        return;
+      }
+      // No real file (e.g. a screenshot): save the image bytes and inject those.
+      if (!img) return;
+      const blob = img.getAsFile();
+      if (!blob) return;
       const path = await saveImageBlob(blob);
       if (path) injectPaths(paneId, [path]);
     };

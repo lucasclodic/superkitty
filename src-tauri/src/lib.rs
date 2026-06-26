@@ -86,6 +86,7 @@ pub fn run() {
             pty::notify,
             pty::play_sound,
             pty::save_image,
+            pty::clipboard_file_paths,
             pty::list_files,
         ])
         .run(tauri::generate_context!())

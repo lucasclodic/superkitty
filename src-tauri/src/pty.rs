@@ -676,6 +676,102 @@ pub fn save_image(bytes: Vec<u8>, ext: String) -> Result<String, String> {
     Ok(path.to_string_lossy().to_string())
 }
 
+/// Read file paths off the macOS clipboard (idea #4). When a file or folder is
+/// copied in Finder (⌘C), the pasteboard carries the real file URLs — but the
+/// webview only exposes an *icon/image preview* of it, so a plain ⌘V would wrongly
+/// save that preview as an image (and even folders/non-image files would show up
+/// as "[Image]"). This reads the actual paths straight from `NSPasteboard` and
+/// returns them, so the frontend can inject the real paths instead — letting
+/// `claude` decide per file whether it's an image (`[Image #N]`) or a plain path.
+/// Returns an empty list for a clipboard with no files (e.g. a copied screenshot),
+/// letting the image-bytes path take over.
+///
+/// Reading is done **natively** via objc2 (in-process Cocoa), not by spawning
+/// `osascript`: the previous JXA approach failed silently inside the bundled app
+/// (any subprocess/permission hiccup fell through to an empty list), which made
+/// *every* paste look like a screenshot. Native NSPasteboard access is reliable,
+/// has no PATH/permission dependency, and is far faster.
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub fn clipboard_file_paths() -> Vec<String> {
+    use objc2_app_kit::NSPasteboard;
+    use objc2_foundation::{NSArray, NSString, NSURL};
+
+    // Parse a `file://` URL string into a POSIX path and add it (deduped — a
+    // multi-file copy can expose the same path under several representations).
+    fn push_file_url(out: &mut Vec<String>, s: &NSString) {
+        let Some(url) = NSURL::URLWithString(s) else {
+            return;
+        };
+        if !url.isFileURL() {
+            return;
+        }
+        // Finder writes file-reference URLs (file:///.file/id=…); NSURL.path only
+        // half-resolves the node id (→ "/Users"). filePathURL turns the reference
+        // into a real path URL whose `path` is the true POSIX path.
+        let resolved = url.filePathURL().unwrap_or(url);
+        if let Some(path) = resolved.path() {
+            let p = path.to_string();
+            if !p.is_empty() && !out.contains(&p) {
+                out.push(p);
+            }
+        }
+    }
+
+    let mut out: Vec<String> = Vec::new();
+    let pb = NSPasteboard::generalPasteboard();
+    let furl = NSString::from_str("public.file-url");
+
+    // 1) Modern read — the one that actually fires for Finder. A real ⌘C in
+    //    Finder writes each selected item as a `public.file-url`
+    //    (NSPasteboardTypeFileURL); the legacy NSFilenamesPboardType below is no
+    //    longer populated on current macOS. Read the file URL off every pasteboard
+    //    item (a multi-file copy is one item each).
+    if let Some(items) = pb.pasteboardItems() {
+        for item in items.iter() {
+            if let Some(s) = item.stringForType(&furl) {
+                push_file_url(&mut out, &s);
+            }
+        }
+    }
+
+    // 2) Fallback — legacy NSFilenamesPboardType: an array of POSIX paths. This is
+    //    what AppleScript (`set the clipboard to (POSIX file …)`) writes, so keep
+    //    it for non-Finder sources.
+    if out.is_empty() {
+        let ty = NSString::from_str("NSFilenamesPboardType");
+        if let Some(obj) = pb.propertyListForType(&ty) {
+            if let Ok(arr) = obj.downcast::<NSArray>() {
+                for item in arr.iter() {
+                    if let Ok(s) = item.downcast::<NSString>() {
+                        let p = s.to_string();
+                        if !p.is_empty() && !out.contains(&p) {
+                            out.push(p);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 3) Last-ditch: a single top-level `public.file-url` (some sources set only
+    //    this, on the pasteboard rather than a per-item representation).
+    if out.is_empty() {
+        if let Some(s) = pb.stringForType(&furl) {
+            push_file_url(&mut out, &s);
+        }
+    }
+
+    out
+}
+
+/// Non-macOS stub (superkitty is macOS-only, but keeps the crate buildable).
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub fn clipboard_file_paths() -> Vec<String> {
+    Vec::new()
+}
+
 /// Show a native macOS notification (idea #6) via `osascript` — no extra plugin
 /// or capability needed (superkitty is macOS-only). Best-effort: failures are
 /// ignored so a missing/blocked Notification Center never breaks the app.
