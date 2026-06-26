@@ -13,6 +13,7 @@ use std::sync::Mutex;
 use std::thread;
 
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
+use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{AppHandle, Emitter, State};
 
 /// A live PTY: its writer (stdin side), the master handle (for resize) and the
@@ -77,6 +78,13 @@ pub fn pty_spawn(
     // When true, wrap the freshly-created shell in a Seatbelt sandbox confining
     // writes to the project dir (idea #5). Ignored on `-A` re-attach.
     sandbox: Option<bool>,
+    // High-throughput sink for PTY output bytes. A Tauri Channel (not a global
+    // event) so chunks ride a raw binary IPC body instead of being serialized to
+    // a JSON number array — the latter ~4×-expands every read and, under a flood
+    // of output (several Claude sub-agents at once), pins the webview's main
+    // thread and freezes the UI. Each mount creates its own channel, so a stale
+    // reader thread can never deliver into a torn-down pane's handler.
+    on_output: Channel<InvokeResponseBody>,
 ) -> Result<(), String> {
     // If we already have a live PTY for this id, do nothing (avoids double
     // spawns from React effect re-runs).
@@ -187,8 +195,11 @@ pub fn pty_spawn(
                 Ok(0) => break,
                 Ok(n) => {
                     let chunk = &buf[..n];
-                    let _ = app_for_thread
-                        .emit(&format!("pty://output/{id_for_thread}"), chunk);
+                    // Raw binary body: Tauri ships chunks >= 1 KiB straight through
+                    // the fetch IPC channel (octet-stream, no JSON) — exactly the
+                    // large reads a flood produces. Bell/exit below stay on global
+                    // events: rare and tiny, so their JSON cost is negligible.
+                    let _ = on_output.send(InvokeResponseBody::Raw(chunk.to_vec()));
                     // A terminal bell (BEL, 0x07) is how Claude Code signals it
                     // finished / is waiting for input. Forward it so the UI can
                     // badge an unwatched pane + fire a macOS notification (#6).
@@ -238,6 +249,37 @@ pub fn pty_resize(
             .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+/// Force tmux to fully repaint the client driving this session. After a pane
+/// grows (window/pane close → layout rebalance → SIGWINCH via master.resize),
+/// tmux's redraw to the xterm client can land partial/lost, leaving a blank
+/// strip where content was — until a full redraw (which scrolling into
+/// copy-mode triggers) repaints it. We reproduce that full redraw explicitly:
+/// find the single client attached to the session (-D guarantees one) and
+/// `refresh-client` it WITHOUT -S (a -S refresh would only redraw the status
+/// line). Best-effort: failures are ignored (session gone / tmux busy).
+#[tauri::command]
+pub fn pty_redraw(state: State<PtyManager>, id: String) {
+    let session_name = resolved_session_name(&state, &id);
+    let Ok(out) = std::process::Command::new("tmux")
+        .args(["list-clients", "-t", &session_name, "-F", "#{client_name}"])
+        .output()
+    else {
+        return;
+    };
+    if !out.status.success() {
+        return;
+    }
+    for client in String::from_utf8_lossy(&out.stdout).lines() {
+        let client = client.trim();
+        if client.is_empty() {
+            continue;
+        }
+        let _ = std::process::Command::new("tmux")
+            .args(["refresh-client", "-t", client])
+            .status();
+    }
 }
 
 /// Report the current working directory of a session's active pane, so a new

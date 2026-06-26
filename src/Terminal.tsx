@@ -1,18 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import type { ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, Channel } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import "@xterm/xterm/css/xterm.css";
-
-/** Scroll position reported by the backend (tmux copy-mode). */
-type ScrollState = {
-  position: number;
-  history_size: number;
-  pane_height: number;
-};
 
 /**
  * One terminal pane backed by a persistent PTY (see src-tauri/src/pty.rs).
@@ -85,6 +78,11 @@ export function TerminalView({
       cursorBlink: true,
       allowProposedApi: true,
       theme: themeRef.current,
+      // tmux owns all scrollback (it runs in the alternate screen), so xterm
+      // never needs any of its own. With 0, xterm v6 creates no scrollable area
+      // and so never renders its built-in (VS Code-style) scrollbar — keeping
+      // the pane free of any scrollbar (scroll via wheel / keyboard → tmux).
+      scrollback: 0,
     });
     termRef.current = term;
     const fit = new FitAddon();
@@ -97,10 +95,61 @@ export function TerminalView({
     let disposed = false;
     const unlisteners: Array<() => void> = [];
 
-    (async () => {
-      const offOutput = await listen<number[]>(`pty://output/${id}`, (e) => {
-        term.write(new Uint8Array(e.payload));
+    // PTY output is batched: rather than calling term.write() synchronously for
+    // every IPC message (which, under a flood — several Claude sub-agents writing
+    // at once — pins the main thread and freezes the whole UI), incoming chunks
+    // are queued and flushed at most once per animation frame, gated on xterm
+    // finishing the previous write. That single backpressure point keeps the
+    // browser free to paint and handle input no matter how fast bytes arrive.
+    let pending: Uint8Array[] = [];
+    let scheduled = false;
+    let draining = false;
+    let rafId = 0;
+    const flush = () => {
+      scheduled = false;
+      rafId = 0;
+      if (disposed || pending.length === 0) return;
+      // Coalesce everything queued into one write (cheaper than N writes).
+      let total = 0;
+      for (const c of pending) total += c.length;
+      const merged = new Uint8Array(total);
+      let off = 0;
+      for (const c of pending) {
+        merged.set(c, off);
+        off += c.length;
+      }
+      pending = [];
+      draining = true;
+      // The write callback is the backpressure: only schedule the next flush
+      // once xterm has drained this one, so we never outrun the renderer.
+      term.write(merged, () => {
+        draining = false;
+        if (!disposed && pending.length > 0 && !scheduled) {
+          scheduled = true;
+          rafId = requestAnimationFrame(flush);
+        }
       });
+    };
+    const enqueue = (buf: ArrayBuffer) => {
+      if (disposed) return;
+      pending.push(new Uint8Array(buf));
+      if (!scheduled && !draining) {
+        scheduled = true;
+        rafId = requestAnimationFrame(flush);
+      }
+    };
+    // Raw-bytes channel instead of a global event: chunks ride a binary IPC body
+    // (no JSON number-array expansion). See pty_spawn in src-tauri/src/pty.rs.
+    const outputChannel = new Channel<ArrayBuffer>();
+    outputChannel.onmessage = enqueue;
+    const cancelOutput = () => {
+      outputChannel.onmessage = () => {};
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+      pending = [];
+    };
+
+    (async () => {
       const offExit = await listen(`pty://exit/${id}`, () => {
         term.write("\r\n\x1b[2m[session ended]\x1b[0m\r\n");
       });
@@ -108,12 +157,11 @@ export function TerminalView({
         onBellRef.current?.();
       });
       if (disposed) {
-        offOutput();
         offExit();
         offBell();
         return;
       }
-      unlisteners.push(offOutput, offExit, offBell);
+      unlisteners.push(offExit, offBell);
       await invoke("pty_spawn", {
         id,
         cols: term.cols,
@@ -121,14 +169,25 @@ export function TerminalView({
         cwd: cwdRef.current,
         session: sessionRef.current,
         sandbox: sandboxRef.current,
+        onOutput: outputChannel,
       });
     })();
 
     const dataDisposable = term.onData((data) => {
       invoke("pty_write", { id, data });
     });
+    let redrawTimer = 0;
     const resizeDisposable = term.onResize(({ cols, rows }) => {
       invoke("pty_resize", { id, cols, rows });
+      // After the resize burst settles, force a full tmux redraw: a grow's
+      // SIGWINCH redraw can land partial, leaving a blank strip until copy-mode
+      // (scroll) repaints. Debounced so it runs once, after the LAST resize and
+      // after tmux has processed the SIGWINCH at the final size.
+      if (redrawTimer) clearTimeout(redrawTimer);
+      redrawTimer = window.setTimeout(() => {
+        redrawTimer = 0;
+        invoke("pty_redraw", { id }).catch(() => {});
+      }, 120);
     });
 
     // Coalesce resize bursts into a single fit, run on the NEXT frame — i.e.
@@ -155,7 +214,9 @@ export function TerminalView({
 
     return () => {
       disposed = true;
+      cancelOutput();
       if (raf) cancelAnimationFrame(raf);
+      if (redrawTimer) clearTimeout(redrawTimer);
       resizeObserver.disconnect();
       dataDisposable.dispose();
       resizeDisposable.dispose();
@@ -197,110 +258,6 @@ export function TerminalView({
     }
   }, [theme, fontFamily, fontSize]);
 
-  // ---- Custom scrollbar overlay -----------------------------------------
-  // tmux owns the alternate screen, so xterm.js's own scrollbar is inert — the
-  // real scrollback lives in tmux copy-mode. We poll the backend for the scroll
-  // position and render our own draggable thumb that drives copy-mode.
-  const [scroll, setScroll] = useState<ScrollState | null>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef(false);
-  const grabOffsetRef = useRef(0); // px between cursor and thumb top while dragging
-
-  // Throttled sender for pty_scroll_to (entering copy-mode + scrolling spawns a
-  // few tmux processes, so don't fire on every pointermove frame).
-  const pendingPosRef = useRef<number | null>(null);
-  const lastSentRef = useRef(0);
-  const flushTimerRef = useRef<number | null>(null);
-  const sendScroll = (pos: number) => {
-    pendingPosRef.current = pos;
-    const flush = () => {
-      lastSentRef.current = performance.now();
-      flushTimerRef.current = null;
-      const p = pendingPosRef.current;
-      pendingPosRef.current = null;
-      if (p != null) invoke("pty_scroll_to", { id, position: p }).catch(() => {});
-    };
-    const elapsed = performance.now() - lastSentRef.current;
-    if (elapsed >= 50) flush();
-    else if (flushTimerRef.current == null)
-      flushTimerRef.current = window.setTimeout(flush, 50 - elapsed);
-  };
-
-  // Poll the scroll position while this pane is focused (the wheel is handled by
-  // tmux now, so the frontend never sees it — polling is how we stay in sync).
-  // Suspended during an active drag so our optimistic thumb wins.
-  useEffect(() => {
-    if (!active) return;
-    let cancelled = false;
-    const poll = async () => {
-      if (draggingRef.current) return;
-      try {
-        const s = await invoke<ScrollState | null>("pty_scroll_state", { id });
-        if (!cancelled && !draggingRef.current) setScroll(s);
-      } catch {
-        /* session gone / tmux busy — keep last known */
-      }
-    };
-    poll();
-    const t = window.setInterval(poll, 120);
-    return () => {
-      cancelled = true;
-      window.clearInterval(t);
-    };
-  }, [active, id]);
-
-  // Geometry: total scrollable lines = scrollback + visible rows.
-  const total = scroll ? scroll.history_size + scroll.pane_height : 0;
-  const showScrollbar = !!scroll && scroll.history_size > 0 && total > 0;
-  const thumbHeightPct = total ? (scroll!.pane_height / total) * 100 : 100;
-  const thumbTopPct = total
-    ? ((scroll!.history_size - scroll!.position) / total) * 100
-    : 0;
-
-  // Map a cursor Y (px, viewport coords) to a scroll position and apply it.
-  const applyFromPointer = (clientY: number) => {
-    const track = trackRef.current;
-    if (!track || !scroll) return;
-    const rect = track.getBoundingClientRect();
-    const thumbPx = (thumbHeightPct / 100) * rect.height;
-    let topPx = clientY - rect.top - grabOffsetRef.current;
-    topPx = Math.max(0, Math.min(rect.height - thumbPx, topPx));
-    const topFrac = rect.height ? topPx / rect.height : 0;
-    const pos = Math.round(scroll.history_size - topFrac * total);
-    const clamped = Math.max(0, Math.min(scroll.history_size, pos));
-    // Optimistic local update so the thumb tracks the cursor without lag.
-    setScroll((prev) => (prev ? { ...prev, position: clamped } : prev));
-    sendScroll(clamped);
-  };
-
-  const onTrackPointerDown = (e: React.PointerEvent) => {
-    if (!scroll || !trackRef.current) return;
-    e.preventDefault();
-    const rect = trackRef.current.getBoundingClientRect();
-    const thumbPx = (thumbHeightPct / 100) * rect.height;
-    const thumbTopPx = (thumbTopPct / 100) * rect.height;
-    const onThumb =
-      e.clientY >= rect.top + thumbTopPx &&
-      e.clientY <= rect.top + thumbTopPx + thumbPx;
-    // Grabbing the thumb keeps the grip point; clicking the track centers it.
-    grabOffsetRef.current = onThumb
-      ? e.clientY - (rect.top + thumbTopPx)
-      : thumbPx / 2;
-    draggingRef.current = true;
-    trackRef.current.setPointerCapture(e.pointerId);
-    applyFromPointer(e.clientY);
-  };
-
-  const onTrackPointerMove = (e: React.PointerEvent) => {
-    if (draggingRef.current) applyFromPointer(e.clientY);
-  };
-
-  const endDrag = (e: React.PointerEvent) => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    trackRef.current?.releasePointerCapture(e.pointerId);
-  };
-
   return (
     <div
       className={`terminal-pane${active ? " active" : ""}`}
@@ -308,24 +265,6 @@ export function TerminalView({
       onMouseDown={onFocus}
     >
       <div className="terminal-mount" ref={containerRef} />
-      {showScrollbar && (
-        <div
-          className={`pane-scrollbar${draggingRef.current ? " dragging" : ""}`}
-          ref={trackRef}
-          onPointerDown={onTrackPointerDown}
-          onPointerMove={onTrackPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-        >
-          <div
-            className="pane-scrollbar-thumb"
-            style={{
-              top: `${thumbTopPct}%`,
-              height: `${Math.max(thumbHeightPct, 6)}%`,
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 }
