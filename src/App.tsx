@@ -4,7 +4,6 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { TerminalView } from "./Terminal";
-import { Logo } from "./Logo";
 import { SessionSidebar, TmuxSession } from "./SessionSidebar";
 import { StatusBar } from "./StatusBar";
 import { LayoutPicker } from "./LayoutPicker";
@@ -1700,7 +1699,6 @@ function App() {
   return (
     <div className="app">
       <div className="titlebar">
-        <Logo className="titlebar-logo" size={20} />
         <div className="tabs">
           {state.tabs.map((t, i) => {
             if (renamingTabId === t.id) {

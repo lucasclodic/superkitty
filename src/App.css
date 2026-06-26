@@ -16,7 +16,9 @@
   --rb-purple: #a87fc4;
   --rb-blue: #54aec0;
 
-  /* Police pixel « Chicago » des micro-étiquettes / du wordmark */
+  /* Polices de la charte : Garamond italique pour la marque, pixel pour les
+     micro-étiquettes, Monaco pour le code. */
+  --brand: "EB Garamond", "Apple Garamond", Garamond, "Times New Roman", serif;
   --pixel: "Silkscreen", "Chicago", ui-monospace, monospace;
   --mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
 }
@@ -59,14 +61,6 @@ body {
   /* room for the macOS traffic lights */
   padding-left: 78px;
   user-select: none;
-}
-
-.titlebar-logo {
-  flex: 0 0 auto;
-  align-self: center;
-  margin: 0 8px 0 2px;
-  /* léger relief pour décoller le ruban du fond sombre */
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
 }
 
 .tabs {
@@ -194,32 +188,38 @@ body {
   padding: 6px 8px 6px 4px;
 }
 
-/* Wordmark « superkitty » : pastille ruban arc-en-ciel + police pixel, en haut
-   à droite (charte Platinum Noir). Clic → palette ⌘K. */
+/* Wordmark « superkitty » : EB Garamond italique en texte dégradé arc-en-ciel,
+   exactement comme le héro du site (design/charte-noir-bureau.html). En haut à
+   droite, clic → palette ⌘K. */
 .titlebar-brand {
-  margin-left: 4px;
-  height: 22px;
-  padding: 0 10px;
+  margin-left: 8px;
+  padding: 0 4px;
   border: 0;
-  border-radius: 7px;
+  background: transparent;
   cursor: pointer;
-  background: linear-gradient(
-    110deg,
-    var(--rb-red),
-    var(--rb-purple),
-    var(--rb-blue)
+  font-family: var(--brand);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.2px;
+  background-image: linear-gradient(
+    100deg,
+    var(--rb-green) 0%,
+    var(--rb-yellow) 20%,
+    var(--rb-orange) 40%,
+    var(--rb-red) 60%,
+    var(--rb-purple) 80%,
+    var(--rb-blue) 100%
   );
-  color: #1a1713;
-  font-family: var(--pixel);
-  font-size: 9px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 6px rgba(120, 140, 160, 0.18));
   transition: filter 0.12s;
 }
 .titlebar-brand:hover {
-  filter: brightness(1.08);
+  filter: drop-shadow(0 1px 8px rgba(120, 140, 160, 0.35));
 }
 
 /* ---- body: workspace + session sidebar side by side ---- */
