@@ -1,66 +1,52 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FONT_CHOICES, SkSettings, THEMES } from "./themes";
+import {
+  ACTIONS,
+  Bindings,
+  buildLookup,
+  chordFromEvent,
+  DEFAULTS,
+  formatChord,
+  resolveBindings,
+  toOverrides,
+} from "./shortcuts";
 
-/** Keyboard reference, also shown here so all shortcuts are discoverable
- *  (ideas #3 + #10). Display-only — the real bindings live in App.tsx. */
-const SHORTCUTS: { group: string; items: [string, string][] }[] = [
-  {
-    group: "Onglets",
-    items: [
-      ["⌘T", "Nouvel onglet"],
-      ["⌘W", "Fermer l'onglet"],
-      ["⌘⇧T", "Rouvrir le dernier fermé"],
-      ["⌘1…9", "Aller à l'onglet N"],
-      ["⌘⇧] / ⌘⇧[", "Onglet suivant / précédent"],
-    ],
-  },
-  {
-    group: "Fenêtres (panes)",
-    items: [
-      ["⌘D / ⌘↵", "Nouvelle fenêtre"],
-      ["⌃⇧W / ⌘⇧D", "Fermer la fenêtre"],
-      ["⌘ + flèches", "Focus voisin"],
-      ["⌘⇧ + flèches", "Déplacer (échanger)"],
-      ["⌃⇧] / ⌃⇧[", "Fenêtre suivante / précédente"],
-      ["⌃⇧F / ⌃⇧B", "Déplacer dans la liste"],
-      ["⌃⇧`", "Promouvoir en principale"],
-      ["⌃⇧Z / ⌘⇧↵", "Agrandir / réduire (zoom)"],
-    ],
-  },
-  {
-    group: "Dispositions & défilement",
-    items: [
-      ["⌃⇧L", "Disposition suivante"],
-      ["⌃⇧↑ / ⌃⇧↓", "Défiler d'une ligne"],
-      ["⌃⇧PgUp / PgDn", "Défiler d'une page"],
-      ["⌃⇧Home / End", "Haut / bas du scrollback"],
-      ["⌥⌘↑ / ⌥⌘↓", "Prompt précédent / suivant"],
-    ],
-  },
-  {
-    group: "Général",
-    items: [
-      ["⌘K", "Palette de commandes"],
-      ["⌘,", "Réglages"],
-      ["⌘B", "Sessions tmux"],
-    ],
-  },
+type Category =
+  | "apparence"
+  | "police"
+  | "notifications"
+  | "raccourcis"
+  | "apropos";
+
+const CATEGORIES: { id: Category; label: string; icon: string }[] = [
+  { id: "apparence", label: "Apparence", icon: "🎨" },
+  { id: "police", label: "Police", icon: "🔤" },
+  { id: "notifications", label: "Notifications", icon: "🔔" },
+  { id: "raccourcis", label: "Raccourcis", icon: "⌨️" },
+  { id: "apropos", label: "À propos", icon: "ℹ️" },
 ];
 
 /**
- * Settings panel (idea #3): pick an xterm theme, font family + size (live
- * preview, applied to every pane instantly via App state), and a read-only
- * keyboard reference. Opened with ⌘, ; closed with Esc / outside click.
+ * Settings panel (idea #3), redesigned as a two-pane "visual" config: a left
+ * category rail + a right content pane. Theme/font/notifications apply live;
+ * the Raccourcis pane edits the reassignable bindings (see shortcuts.ts).
+ * Opened with ⌘, or the titlebar ⚙ ; closed with Esc / outside click.
  */
 export function Settings({
   settings,
   onChange,
+  bindings,
+  onChangeBindings,
   onClose,
 }: {
   settings: SkSettings;
   onChange: (s: SkSettings) => void;
+  bindings: Bindings;
+  onChangeBindings: (b: Bindings) => void;
   onClose: () => void;
 }) {
+  const [category, setCategory] = useState<Category>("apparence");
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -87,122 +73,333 @@ export function Settings({
           </button>
         </div>
 
-        <div className="settings-body">
-          <section className="settings-section">
-            <h3 className="settings-h3">Thème</h3>
-            <div className="theme-grid">
-              {Object.entries(THEMES).map(([key, t]) => (
-                <button
-                  key={key}
-                  className={`theme-card${settings.theme === key ? " active" : ""}`}
-                  onClick={() => onChange({ ...settings, theme: key })}
-                  style={{
-                    background: t.theme.background,
-                    color: t.theme.foreground,
-                  }}
-                >
-                  <span className="theme-name">{t.label}</span>
-                  <span className="theme-swatches">
-                    {[t.theme.red, t.theme.green, t.theme.blue, t.theme.cursor].map(
-                      (c, i) => (
-                        <i key={i} style={{ background: c }} />
-                      ),
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="settings-section">
-            <h3 className="settings-h3">Police</h3>
-            <div className="settings-row">
-              <label>Famille</label>
-              <select
-                value={settings.fontFamily}
-                onChange={(e) =>
-                  onChange({ ...settings, fontFamily: e.target.value })
-                }
+        <div className="settings-2pane">
+          <nav className="settings-nav">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                className={`settings-nav-item${category === c.id ? " active" : ""}`}
+                onClick={() => setCategory(c.id)}
               >
-                {FONT_CHOICES.map((f) => (
-                  <option key={f.label} value={f.value}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="settings-row">
-              <label>Taille</label>
-              <div className="stepper">
-                <button
-                  onClick={() =>
-                    onChange({
-                      ...settings,
-                      fontSize: Math.max(8, settings.fontSize - 1),
-                    })
-                  }
-                >
-                  −
-                </button>
-                <span>{settings.fontSize} px</span>
-                <button
-                  onClick={() =>
-                    onChange({
-                      ...settings,
-                      fontSize: Math.min(32, settings.fontSize + 1),
-                    })
-                  }
-                >
-                  +
-                </button>
-              </div>
-            </div>
-            <div
-              className="font-preview"
-              style={{
-                fontFamily: settings.fontFamily,
-                fontSize: settings.fontSize,
-              }}
-            >
-              ~/superkitty $ claude --resume ✦ [Image #1]
-            </div>
-          </section>
+                <span className="settings-nav-icon">{c.icon}</span>
+                <span>{c.label}</span>
+              </button>
+            ))}
+          </nav>
 
-          <section className="settings-section">
-            <h3 className="settings-h3">Notifications</h3>
-            <label className="settings-toggle">
-              <input
-                type="checkbox"
-                checked={settings.notify}
-                onChange={(e) =>
-                  onChange({ ...settings, notify: e.target.checked })
-                }
+          <div className="settings-pane">
+            {category === "apparence" && (
+              <AppearancePane settings={settings} onChange={onChange} />
+            )}
+            {category === "police" && (
+              <FontPane settings={settings} onChange={onChange} />
+            )}
+            {category === "notifications" && (
+              <NotificationsPane settings={settings} onChange={onChange} />
+            )}
+            {category === "raccourcis" && (
+              <ShortcutsPane
+                bindings={bindings}
+                onChangeBindings={onChangeBindings}
               />
-              <span>
-                Notifier (macOS) quand un agent termine dans une fenêtre non
-                regardée
-              </span>
-            </label>
-          </section>
-
-          <section className="settings-section">
-            <h3 className="settings-h3">Raccourcis clavier</h3>
-            <div className="shortcut-cols">
-              {SHORTCUTS.map((g) => (
-                <div key={g.group} className="shortcut-group">
-                  <h4 className="shortcut-h4">{g.group}</h4>
-                  {g.items.map(([chord, action]) => (
-                    <div key={action} className="shortcut-row">
-                      <span className="shortcut-action">{action}</span>
-                      <kbd className="shortcut-kbd">{chord}</kbd>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </section>
+            )}
+            {category === "apropos" && <AboutPane />}
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function AppearancePane({
+  settings,
+  onChange,
+}: {
+  settings: SkSettings;
+  onChange: (s: SkSettings) => void;
+}) {
+  return (
+    <section className="settings-section">
+      <h3 className="settings-h3">Thème</h3>
+      <div className="theme-grid">
+        {Object.entries(THEMES).map(([key, t]) => (
+          <button
+            key={key}
+            className={`theme-card${settings.theme === key ? " active" : ""}`}
+            onClick={() => onChange({ ...settings, theme: key })}
+            style={{
+              background: t.theme.background,
+              color: t.theme.foreground,
+            }}
+          >
+            <span className="theme-name">{t.label}</span>
+            <span className="theme-swatches">
+              {[t.theme.red, t.theme.green, t.theme.blue, t.theme.cursor].map(
+                (c, i) => (
+                  <i key={i} style={{ background: c }} />
+                ),
+              )}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FontPane({
+  settings,
+  onChange,
+}: {
+  settings: SkSettings;
+  onChange: (s: SkSettings) => void;
+}) {
+  return (
+    <section className="settings-section">
+      <h3 className="settings-h3">Police</h3>
+      <div className="settings-row">
+        <label>Famille</label>
+        <select
+          value={settings.fontFamily}
+          onChange={(e) => onChange({ ...settings, fontFamily: e.target.value })}
+        >
+          {FONT_CHOICES.map((f) => (
+            <option key={f.label} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="settings-row">
+        <label>Taille</label>
+        <div className="stepper">
+          <button
+            onClick={() =>
+              onChange({
+                ...settings,
+                fontSize: Math.max(8, settings.fontSize - 1),
+              })
+            }
+          >
+            −
+          </button>
+          <span>{settings.fontSize} px</span>
+          <button
+            onClick={() =>
+              onChange({
+                ...settings,
+                fontSize: Math.min(32, settings.fontSize + 1),
+              })
+            }
+          >
+            +
+          </button>
+        </div>
+      </div>
+      <div
+        className="font-preview"
+        style={{ fontFamily: settings.fontFamily, fontSize: settings.fontSize }}
+      >
+        ~/superkitty $ claude --resume ✦ [Image #1]
+      </div>
+    </section>
+  );
+}
+
+function NotificationsPane({
+  settings,
+  onChange,
+}: {
+  settings: SkSettings;
+  onChange: (s: SkSettings) => void;
+}) {
+  return (
+    <section className="settings-section">
+      <h3 className="settings-h3">Notifications</h3>
+      <label className="settings-toggle">
+        <input
+          type="checkbox"
+          checked={settings.notify}
+          onChange={(e) => onChange({ ...settings, notify: e.target.checked })}
+        />
+        <span>
+          Notifier (macOS) quand un agent termine dans une fenêtre non regardée
+        </span>
+      </label>
+    </section>
+  );
+}
+
+function ShortcutsPane({
+  bindings,
+  onChangeBindings,
+}: {
+  bindings: Bindings;
+  onChangeBindings: (b: Bindings) => void;
+}) {
+  const [query, setQuery] = useState("");
+  // The action currently waiting for a keypress, or null.
+  const [capturing, setCapturing] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [warn, setWarn] = useState<string | null>(null);
+
+  const resolved = useMemo(() => resolveBindings(bindings), [bindings]);
+
+  const applyResolved = (next: Record<string, string[]>) =>
+    onChangeBindings(toOverrides(next));
+
+  const removeChord = (id: string, chord: string) => {
+    applyResolved({ ...resolved, [id]: resolved[id].filter((c) => c !== chord) });
+  };
+
+  const resetAction = (id: string) => {
+    applyResolved({ ...resolved, [id]: [...DEFAULTS[id]] });
+  };
+
+  // Listen for the next chord while capturing for an action.
+  useEffect(() => {
+    if (!capturing) return;
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === "Escape") {
+        setCapturing(null);
+        return;
+      }
+      // Ignore lone modifier presses; wait for a real key.
+      if (/^(Control|Alt|Shift|Meta)(Left|Right)$/.test(e.code)) return;
+      const chord = chordFromEvent(e);
+      if (!chord) {
+        setWarn("Ajoutez ⌘ ou ⌃ au raccourci.");
+        return;
+      }
+      // Conflict: steal the chord from whoever holds it.
+      const owner = buildLookup(resolved).get(chord);
+      const next = { ...resolved };
+      for (const other of Object.keys(next)) {
+        if (other !== capturing && next[other].includes(chord)) {
+          next[other] = next[other].filter((c) => c !== chord);
+        }
+      }
+      if (!next[capturing].includes(chord)) {
+        next[capturing] = [...next[capturing], chord];
+      }
+      applyResolved(next);
+      if (owner && owner !== capturing) {
+        const label = ACTIONS.find((a) => a.id === owner)?.label ?? owner;
+        setNote(`« ${formatChord(chord)} » retiré de « ${label} ».`);
+      } else {
+        setNote(null);
+      }
+      setWarn(null);
+      setCapturing(null);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capturing, bindings]);
+
+  const q = query.trim().toLowerCase();
+  // Group actions for display, filtered by the search query.
+  const groups: { group: string; items: typeof ACTIONS }[] = [];
+  for (const a of ACTIONS) {
+    if (q && !a.label.toLowerCase().includes(q) && !a.group.toLowerCase().includes(q))
+      continue;
+    let g = groups.find((x) => x.group === a.group);
+    if (!g) {
+      g = { group: a.group, items: [] };
+      groups.push(g);
+    }
+    g.items.push(a);
+  }
+
+  return (
+    <section className="settings-section">
+      <div className="settings-row" style={{ marginBottom: 14 }}>
+        <input
+          className="key-search"
+          type="text"
+          placeholder="Rechercher un raccourci…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          autoFocus
+        />
+      </div>
+
+      {note && <p className="key-note">{note}</p>}
+
+      {groups.map((g) => (
+        <div key={g.group} className="key-group">
+          <h4 className="shortcut-h4">{g.group}</h4>
+          {g.items.map((a) => {
+            const chords = resolved[a.id] ?? [];
+            const overridden = bindings[a.id] !== undefined;
+            const isCapturing = capturing === a.id;
+            return (
+              <div key={a.id} className="key-row">
+                <span className="key-label">{a.label}</span>
+                <div className="key-controls">
+                  {chords.map((c) => (
+                    <span key={c} className="key-chip">
+                      {formatChord(c)}
+                      <button
+                        className="key-chip-x"
+                        title="Retirer"
+                        onClick={() => removeChord(a.id, c)}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                  {isCapturing ? (
+                    <span className="key-capture">
+                      {warn ?? "Appuyez sur une touche…"}
+                    </span>
+                  ) : (
+                    <button
+                      className="key-add"
+                      title="Ajouter un raccourci"
+                      onClick={() => {
+                        setWarn(null);
+                        setCapturing(a.id);
+                      }}
+                    >
+                      ＋
+                    </button>
+                  )}
+                  {overridden && (
+                    <button
+                      className="key-reset"
+                      title="Réinitialiser"
+                      onClick={() => resetAction(a.id)}
+                    >
+                      ↺
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function AboutPane() {
+  return (
+    <section className="settings-section">
+      <h3 className="settings-h3">À propos</h3>
+      <p className="about-text">
+        <strong>superkitty</strong> — un terminal macOS dédié à Claude Code :
+        vrai PTY façon kitty, sessions persistantes via tmux, et une UI sans
+        friction (drag & drop d'images, panes kitty, palette de commandes).
+      </p>
+      <p className="about-text">
+        Astuces : <kbd className="shortcut-kbd">⌘K</kbd> ouvre la palette de
+        commandes, <kbd className="shortcut-kbd">⌃`</kbd> la fenêtre Quake
+        globale depuis n'importe quelle app.
+      </p>
+    </section>
   );
 }

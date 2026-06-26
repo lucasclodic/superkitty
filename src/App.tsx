@@ -4,16 +4,27 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { TerminalView } from "./Terminal";
+import { Logo } from "./Logo";
 import { SessionSidebar, TmuxSession } from "./SessionSidebar";
+import { StatusBar } from "./StatusBar";
 import { LayoutPicker } from "./LayoutPicker";
 import { CommandPalette, Command } from "./CommandPalette";
 import { ContextMenu } from "./ContextMenu";
+import { TabColorPicker } from "./TabColorPicker";
 import { Settings } from "./Settings";
 import { FilePicker } from "./FilePicker";
 import { Scratchpad } from "./Scratchpad";
 import { PromptComposer } from "./PromptComposer";
 import { QuickPrompt } from "./QuickPrompt";
 import { SkSettings, loadSettings, saveSettings, themeOf } from "./themes";
+import {
+  Bindings,
+  buildLookup,
+  chordFromEvent,
+  loadBindings,
+  resolveBindings,
+  saveBindings,
+} from "./shortcuts";
 import {
   Direction,
   LAYOUT_CYCLE,
@@ -39,6 +50,10 @@ interface Tab {
   // Manual tab name (idea #17). Falls back to the project folder, then the
   // number. The per-project tint is derived from the cwd, not stored.
   title?: string;
+  // Tab colour (idea #17). Assigned a distinct palette colour at creation (so two
+  // tabs never share one by default) and overridable by right-clicking the tab.
+  // When unset (legacy tabs), the tint falls back to the cwd hash.
+  color?: string;
 }
 
 /** A pane snapshot kept in the closed-items history, enough to reopen it. */
@@ -61,6 +76,8 @@ type ClosedItem =
       panes: ClosedPane[];
       // Custom tab name (idea #17), so a renamed-then-reopened tab keeps it.
       title?: string;
+      // Custom tab colour (idea #17), so a recoloured-then-reopened tab keeps it.
+      color?: string;
     };
 
 interface AppState {
@@ -116,6 +133,33 @@ function autoTint(key: string): string {
   return `hsl(${h % 360}, 65%, 68%)`;
 }
 
+/** Curated palette of distinct tab colours (idea #17), evenly spaced hues at the
+ *  same saturation/lightness as `autoTint` so manual and auto colours match. */
+export const TAB_COLORS = [
+  "hsl(0, 65%, 68%)",
+  "hsl(28, 65%, 68%)",
+  "hsl(48, 65%, 68%)",
+  "hsl(90, 65%, 68%)",
+  "hsl(140, 65%, 68%)",
+  "hsl(168, 65%, 68%)",
+  "hsl(196, 65%, 68%)",
+  "hsl(216, 65%, 68%)",
+  "hsl(255, 65%, 68%)",
+  "hsl(285, 65%, 68%)",
+  "hsl(315, 65%, 68%)",
+  "hsl(338, 65%, 68%)",
+];
+
+/** Pick a default tab colour avoiding the ones already in use, so a new tab never
+ *  repeats a sibling's colour. Falls back to round-robin once all are taken. */
+function pickTabColor(used: (string | undefined)[]): string {
+  const taken = new Set(used.filter(Boolean));
+  return (
+    TAB_COLORS.find((c) => !taken.has(c)) ??
+    TAB_COLORS[taken.size % TAB_COLORS.length]
+  );
+}
+
 const basename = (p: string) => p.replace(/\/+$/, "").split("/").pop() || p;
 
 /** Save a clipboard/pasted image blob to ~/.superkitty/dropped/ via the backend,
@@ -139,7 +183,9 @@ function makeInitialState(): AppState {
   const pid = newId("p");
   const tid = newId("t");
   return {
-    tabs: [{ id: tid, panes: [pid], focused: pid, layout: "tall" }],
+    tabs: [
+      { id: tid, panes: [pid], focused: pid, layout: "tall", color: TAB_COLORS[0] },
+    ],
     activeTabId: tid,
     sessions: {},
     closed: [],
@@ -212,7 +258,9 @@ function normalizeTab(raw: any): Tab | null {
   const zoomed = raw.zoomed === true && panes.length > 1;
   const title =
     typeof raw.title === "string" && raw.title.trim() ? raw.title : undefined;
-  return { id: raw.id, panes, focused, layout, zoomed, title };
+  const color =
+    typeof raw.color === "string" && raw.color.trim() ? raw.color : undefined;
+  return { id: raw.id, panes, focused, layout, zoomed, title, color };
 }
 
 /** Validate the persisted closed-items history (idea #1). */
@@ -357,6 +405,10 @@ function App() {
 
   // ---- right-click context menu (idea #11) ----
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  // Tab colour picker (idea #17): which tab + where to anchor the popover.
+  const [colorMenu, setColorMenu] = useState<
+    { tabId: string; x: number; y: number } | null
+  >(null);
 
   // Pane ids that rang their bell while unwatched — badged until you look at
   // them (idea #6). Not persisted (transient activity).
@@ -367,6 +419,16 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsOpenRef = useRef(settingsOpen);
   settingsOpenRef.current = settingsOpen;
+
+  // ---- reassignable keyboard shortcuts (see shortcuts.ts) ----
+  // `bindings` holds only the overrides; the live chord→action lookup is kept
+  // in a ref so the once-bound keydown listener always reads the latest map.
+  const [bindings, setBindings] = useState<Bindings>(loadBindings);
+  const lookupRef = useRef(buildLookup(resolveBindings(bindings)));
+  useEffect(() => {
+    lookupRef.current = buildLookup(resolveBindings(bindings));
+    saveBindings(bindings);
+  }, [bindings]);
 
   // ---- file picker (idea #15): null = closed, else the cwd to list ----
   const [filePicker, setFilePicker] = useState<{ cwd: string | null } | null>(
@@ -453,7 +515,8 @@ function App() {
   }, [sandboxed]);
 
   // Keep each tab's cwd fresh (its focused pane) for the project name + tint;
-  // re-runs only when some tab's focused pane changes (idea #17).
+  // re-runs on focus change and polls every 2s so the name follows a live `cd`
+  // (idea #17).
   const focusKey = state.tabs.map((t) => `${t.id}:${t.focused}`).join(",");
   useEffect(() => {
     let cancelled = false;
@@ -488,9 +551,13 @@ function App() {
     // pass; retry shortly after so project names/tints appear without needing a
     // focus change.
     const t = setTimeout(fetchCwds, 1200);
+    // Poll periodically so the tab name/tint follow a live `cd` inside a pane
+    // (tmux's pane_current_path), not just a focus change.
+    const iv = setInterval(fetchCwds, 2000);
     return () => {
       cancelled = true;
       clearTimeout(t);
+      clearInterval(iv);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusKey]);
@@ -527,7 +594,14 @@ function App() {
       ...prev,
       tabs: [
         ...prev.tabs,
-        { id: tid, panes: [pid], focused: pid, layout: "tall" as LayoutName },
+        {
+          id: tid,
+          panes: [pid],
+          focused: pid,
+          layout: "tall" as LayoutName,
+          // Distinct colour so a new tab never repeats a sibling's (idea #17).
+          color: pickTabColor(prev.tabs.map((t) => t.color)),
+        },
       ],
       activeTabId: tid,
     }));
@@ -636,12 +710,12 @@ function App() {
       };
     });
 
-  // Close the whole active tab. ⌘W. If any pane is running an agent, ask first
-  // (kill vs detach vs cancel) instead of destroying it on reflex (idea #13).
-  // The tab snapshot is taken up-front so both outcomes feed the ⌘⇧T history.
-  const closeTab = async () => {
-    const s = stateRef.current;
-    const t = s.tabs.find((x) => x.id === s.activeTabId);
+  // Close a specific tab by id. ⌘W closes the active one; the tab-bar ✕ button
+  // closes any tab. If any pane is running an agent, ask first (kill vs detach
+  // vs cancel) instead of destroying it on reflex (idea #13). The tab snapshot
+  // is taken up-front so both outcomes feed the ⌘⇧T history.
+  const closeTabById = async (tabId: string) => {
+    const t = stateRef.current.tabs.find((x) => x.id === tabId);
     if (!t) return;
     const snapshot = await snapshotTab(t);
     const busy = await busyPanes(t.panes);
@@ -652,23 +726,35 @@ function App() {
     killTab(t.id, snapshot);
   };
 
+  // Close the whole active tab. ⌘W.
+  const closeTab = () => closeTabById(stateRef.current.activeTabId);
+
   // Close only the focused pane (detaches, keeping its tmux session alive).
   // ⌃⇧W / ⌘⇧D. The pane goes into the closed history so ⌘⇧T can reattach it.
   const closeFocused = () =>
+    closePane(stateRef.current.tabs.find((x) => x.id === stateRef.current.activeTabId)?.focused);
+
+  // Detach a specific pane by id (keeps its tmux session alive; the per-window
+  // ✕ button uses this, ⌃⇧W routes through closeFocused). Pushes it onto the
+  // ⌘⇧T history so a reopen reattaches the live session.
+  const closePane = (paneId: string | undefined) =>
     setState((prev) => {
-      const t = prev.tabs.find((x) => x.id === prev.activeTabId);
+      if (!paneId) return prev;
+      const t = prev.tabs.find((x) => x.panes.includes(paneId));
       if (!t) return prev;
       // Removing the pane unmounts its Terminal → pty_detach (not kill), so the
       // session keeps running and a ⌘⇧T reopen reattaches it.
       const closed = pushClosed(prev.closed, {
         kind: "pane",
-        pane: { id: t.focused, session: prev.sessions[t.focused] },
+        pane: { id: paneId, session: prev.sessions[paneId] },
       });
 
-      const i = t.panes.indexOf(t.focused);
-      const panes = t.panes.filter((id) => id !== t.focused);
+      const i = t.panes.indexOf(paneId);
+      const panes = t.panes.filter((id) => id !== paneId);
       if (panes.length) {
-        const focused = panes[Math.min(i, panes.length - 1)];
+        // Keep the current focus unless we just closed it.
+        const focused =
+          t.focused === paneId ? panes[Math.min(i, panes.length - 1)] : t.focused;
         return {
           ...prev,
           closed,
@@ -706,7 +792,7 @@ function App() {
         return { id: pid, session: stateRef.current.sessions[pid], cwd };
       }),
     );
-    return { kind: "tab", layout: t.layout, focused: t.focused, panes, title: t.title };
+    return { kind: "tab", layout: t.layout, focused: t.focused, panes, title: t.title, color: t.color };
   };
 
   // Reopen the most recently closed pane or tab (Chrome-style ⌘⇧T). A closed
@@ -775,7 +861,7 @@ function App() {
         sessions,
         tabs: [
           ...prev.tabs,
-          { id: tid, panes: paneIds, focused, layout: item.layout, title: item.title },
+          { id: tid, panes: paneIds, focused, layout: item.layout, title: item.title, color: item.color },
         ],
         activeTabId: tid,
       };
@@ -1132,6 +1218,50 @@ function App() {
       action();
     };
 
+    // Action id → handler. Mirrors the metadata in shortcuts.ts (which owns the
+    // labels + default chords). Captured once at mount like the rest of this
+    // effect; the chord→id lookup (lookupRef) is what changes when the user
+    // rebinds. The three overlay toggles (palette/settings/file-picker) are
+    // handled specially inside onKeyDown so they work even while open.
+    const actions: Record<string, () => void> = {
+      "new-tab": newTab,
+      "close-tab": closeTab,
+      reopen: reopenClosed,
+      "next-tab": () => cycleTab(1),
+      "prev-tab": () => cycleTab(-1),
+      "new-window": addWindow,
+      "close-window": closeFocused,
+      zoom: toggleZoom,
+      promote: promoteToMain,
+      "next-window": () => focusSibling(1),
+      "prev-window": () => focusSibling(-1),
+      "move-forward": () => moveInList(1),
+      "move-backward": () => moveInList(-1),
+      "focus-left": () => focusDirection("left"),
+      "focus-right": () => focusDirection("right"),
+      "focus-up": () => focusDirection("up"),
+      "focus-down": () => focusDirection("down"),
+      "move-left": () => moveDirection("left"),
+      "move-right": () => moveDirection("right"),
+      "move-up": () => moveDirection("up"),
+      "move-down": () => moveDirection("down"),
+      "next-layout": () => cycleLayout(1),
+      "scroll-line-up": () => scrollPane("line-up"),
+      "scroll-line-down": () => scrollPane("line-down"),
+      "scroll-page-up": () => scrollPane("page-up"),
+      "scroll-page-down": () => scrollPane("page-down"),
+      "scroll-top": () => scrollPane("top"),
+      "scroll-bottom": () => scrollPane("bottom"),
+      "scroll-prompt-prev": () => scrollPane("prompt-prev"),
+      "scroll-prompt-next": () => scrollPane("prompt-next"),
+      sidebar: toggleSidebar,
+      composer: () => setComposerOpen((o) => !o),
+      scratchpad: () => setScratchpadOpen((o) => !o),
+    };
+    for (let n = 1; n <= 9; n++) {
+      actions[`goto-tab-${n}`] = () => gotoTab(n - 1);
+    }
+
     const onKeyDown = (e: KeyboardEvent) => {
       // While the "agent running" confirmation is open, it owns the keyboard:
       // Esc cancels, Enter detaches (the safe default), everything else is
@@ -1144,17 +1274,19 @@ function App() {
         return;
       }
 
-      const { metaKey: meta, ctrlKey: ctrl, shiftKey: shift, key } = e;
-      const lower = key.toLowerCase();
-      const isRightBracket = key === "]" || key === "}";
-      const isLeftBracket = key === "[" || key === "{";
-
       // While renaming a tab inline, its input owns the keyboard.
       if (renamingRef.current) return;
 
-      // ⌘K toggles the command palette (idea #12); while it's open it owns the
-      // keyboard, so we bail out here and let its input + own handler take keys.
-      if (meta && !ctrl && !shift && lower === "k") {
+      // Canonical chord for this event (null without ⌃/⌥/⌘ → never a shortcut,
+      // so terminal keystrokes pass through). Resolve it to an action id via the
+      // live, reassignable lookup (lookupRef).
+      const chord = chordFromEvent(e);
+      const id = chord ? lookupRef.current.get(chord) : undefined;
+
+      // The three overlay toggles own their chord even while the overlay is
+      // open (so the same combo closes it). Each is followed by its existing
+      // "owns the keyboard while open" bail.
+      if (id === "palette") {
         return done(e, () =>
           setPaletteOpen((o) => {
             if (!o) refreshSessions();
@@ -1164,21 +1296,19 @@ function App() {
       }
       if (paletteOpenRef.current) return;
 
-      // ⌘, toggles the Settings panel (idea #3); while open it owns the keyboard.
-      if (meta && !ctrl && !shift && key === ",") {
+      if (id === "settings") {
         return done(e, () => setSettingsOpen((o) => !o));
       }
       if (settingsOpenRef.current) return;
 
-      // ⌘P opens the file picker for the focused pane's cwd (idea #15).
-      if (meta && !ctrl && !shift && lower === "p") {
+      if (id === "file-picker") {
         return done(e, () => openFilePicker());
       }
       if (filePickerOpenRef.current) return;
 
       // When focus is in one of our own text fields (composer, scratchpad, Quake)
       // — anything but the terminal's hidden textarea — let it handle its keys.
-      // Placed AFTER the ⌘K/⌘,/⌘P toggles so those still close their own overlay
+      // Placed AFTER the toggles above so those still close their own overlay
       // (whose input holds focus).
       const ae = document.activeElement as HTMLElement | null;
       if (
@@ -1189,91 +1319,12 @@ function App() {
         return;
       }
 
-      // ⌃Tab / ⌃⇧Tab → next / prev tab. Handled BEFORE the ⌃⇧ block so a
-      // ⌃⇧Tab isn't swallowed (and dropped) by it.
-      if (ctrl && !meta && key === "Tab") {
-        return done(e, () => cycleTab(shift ? -1 : 1));
-      }
-
-      // kitty_mod (⌃⇧) → window/pane operations + scrollback (kitty defaults)
-      if (ctrl && shift && !meta) {
-        if (lower === "w") return done(e, closeFocused); // close_window
-        if (lower === "l") return done(e, () => cycleLayout(1)); // next_layout
-        if (lower === "z") return done(e, toggleZoom); // zoom (toggle_layout stack)
-        if (lower === "n") return done(e, () => setScratchpadOpen((o) => !o)); // scratchpad (idea #20)
-        if (lower === "f") return done(e, () => moveInList(1)); // move_window_forward
-        if (lower === "b") return done(e, () => moveInList(-1)); // move_window_backward
-        if (key === "`" || key === "~") return done(e, promoteToMain); // move_window_to_top
-        if (key === "Enter") return done(e, addWindow); // new_window
-        if (isRightBracket) return done(e, () => focusSibling(1)); // next_window
-        if (isLeftBracket) return done(e, () => focusSibling(-1)); // previous_window
-        // Scrollback navigation through tmux copy-mode (kitty line/page/home/end
-        // defaults; prompt-to-prompt is on ⌥⌘↑/↓ so ⌃⇧Z can own zoom).
-        if (key === "ArrowUp") return done(e, () => scrollPane("line-up"));
-        if (key === "ArrowDown") return done(e, () => scrollPane("line-down"));
-        if (key === "PageUp") return done(e, () => scrollPane("page-up"));
-        if (key === "PageDown") return done(e, () => scrollPane("page-down"));
-        if (key === "Home") return done(e, () => scrollPane("top")); // scroll_home
-        if (key === "End") return done(e, () => scrollPane("bottom")); // scroll_end
-        return;
-      }
-
-      if (!meta) return;
-
-      // ⌘⇧ → tab nav, pane move/promote/zoom/close, reopen
-      if (shift) {
-        if (isRightBracket) return done(e, () => cycleTab(1)); // next_tab
-        if (isLeftBracket) return done(e, () => cycleTab(-1)); // previous_tab
-        if (lower === "w") return done(e, closeFocused); // close_window
-        if (lower === "d") return done(e, closeFocused); // close_window (kitty macOS ⇧⌘D)
-        if (lower === "t") return done(e, reopenClosed); // reopen closed (Chrome ⌘⇧T)
-        if (lower === "m") return done(e, promoteToMain); // move_window_to_top
-        if (key === "Enter") return done(e, toggleZoom); // maximize/zoom pane
-        // move_window: swap the focused pane with its neighbor (idea #14).
-        if (key === "ArrowLeft") return done(e, () => moveDirection("left"));
-        if (key === "ArrowRight") return done(e, () => moveDirection("right"));
-        if (key === "ArrowUp") return done(e, () => moveDirection("up"));
-        if (key === "ArrowDown") return done(e, () => moveDirection("down"));
-        return;
-      }
-
-      // ⌥⌘↑/↓ → scroll_to_prompt (moved off ⌃⇧Z/X so zoom can own ⌃⇧Z). Reached
-      // only with ⌘ held and no shift; returns so the plain-⌘ arrows below
-      // (focus) don't also fire.
-      if (e.altKey) {
-        if (key === "ArrowUp") return done(e, () => scrollPane("prompt-prev"));
-        if (key === "ArrowDown") return done(e, () => scrollPane("prompt-next"));
-      }
-
-      // ⌘ → tabs + new window
-      switch (key) {
-        case "t":
-          return done(e, newTab); // new_tab
-        case "b":
-          return done(e, toggleSidebar); // toggle session sidebar (idea #2)
-        case "w":
-          return done(e, closeTab); // close_tab
-        case "Enter":
-          return done(e, addWindow); // new_window
-        case "d":
-          return done(e, addWindow); // new_window (convenience)
-        case "e":
-          return done(e, () => setComposerOpen((o) => !o)); // prompt composer (#16)
-        case "ArrowLeft":
-          return done(e, () => focusDirection("left")); // neighboring_window
-        case "ArrowRight":
-          return done(e, () => focusDirection("right"));
-        case "ArrowUp":
-          return done(e, () => focusDirection("up"));
-        case "ArrowDown":
-          return done(e, () => focusDirection("down"));
-        default: {
-          // Touche physique de la rangée de chiffres : "Digit1".."Digit9".
-          // On se base sur e.code (et pas e.key) pour que ça marche aussi sur
-          // AZERTY, où ⌘ + la touche « 1 » produit e.key === "&".
-          const m = e.code.match(/^Digit([1-9])$/);
-          if (m) return done(e, () => gotoTab(Number(m[1]) - 1)); // goto_tab
-        }
+      // Everything else is dispatched through the (reassignable) binding table.
+      // An unbound chord falls through without preventDefault, so the terminal
+      // still receives it.
+      if (id) {
+        const run = actions[id];
+        if (run) return done(e, run);
       }
     };
 
@@ -1420,9 +1471,16 @@ function App() {
     return cwd ? basename(cwd) : null;
   };
   const tabTint = (t: Tab): string | undefined => {
+    // Manual colour wins; otherwise fall back to the cwd hash (legacy tabs).
+    if (t.color) return t.color;
     const cwd = tabCwd[t.id];
     return cwd ? autoTint(cwd) : undefined;
   };
+  const setTabColor = (tabId: string, color: string | undefined) =>
+    setState((prev) => ({
+      ...prev,
+      tabs: prev.tabs.map((t) => (t.id === tabId ? { ...t, color } : t)),
+    }));
   const commitRename = (tabId: string, value: string) => {
     const title = value.trim();
     setState((prev) => ({
@@ -1511,6 +1569,7 @@ function App() {
   return (
     <div className="app">
       <div className="titlebar">
+        <Logo className="titlebar-logo" size={20} />
         <div className="tabs">
           {state.tabs.map((t, i) => {
             if (renamingTabId === t.id) {
@@ -1540,6 +1599,11 @@ function App() {
                 }`}
                 onClick={() => gotoTab(i)}
                 onDoubleClick={() => setRenamingTabId(t.id)}
+                onContextMenu={(e) => {
+                  // Right-click a tab → colour picker (idea #17).
+                  e.preventDefault();
+                  setColorMenu({ tabId: t.id, x: e.clientX, y: e.clientY });
+                }}
                 title={
                   i < 9
                     ? `${label ?? `Onglet ${i + 1}`} — ⌘${i + 1} (double-clic pour renommer)`
@@ -1551,6 +1615,19 @@ function App() {
                 )}
                 <span className="tab-num">{i + 1}</span>
                 {label && <span className="tab-name">{label}</span>}
+                <span
+                  className="tab-close"
+                  role="button"
+                  aria-label="Fermer l'onglet"
+                  title="Fermer l'onglet (⌘W)"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeTabById(t.id);
+                  }}
+                >
+                  ✕
+                </span>
               </button>
             );
           })}
@@ -1569,11 +1646,28 @@ function App() {
             />
           )}
           <button
+            className={`tab${settingsOpen ? " active" : ""}`}
+            onClick={() => setSettingsOpen(true)}
+            title="Réglages (⌘,)"
+          >
+            ⚙
+          </button>
+          <button
             className={`tab${sidebarOpen ? " active" : ""}`}
             onClick={toggleSidebar}
             title="Sessions tmux (⌘B)"
           >
             ☰
+          </button>
+          <button
+            className="titlebar-brand"
+            onClick={() => {
+              refreshSessions();
+              setPaletteOpen(true);
+            }}
+            title="superkitty — toutes les commandes (⌘K)"
+          >
+            superkitty
           </button>
         </div>
       </div>
@@ -1681,6 +1775,17 @@ function App() {
                         {t.zoomed ? "🗗" : "⛶"}
                       </button>
                     )}
+                    <button
+                      className="pane-close"
+                      title="Fermer la fenêtre (⌃⇧W)"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        closePane(id);
+                      }}
+                    >
+                      ✕
+                    </button>
                   </div>
                 );
               })}
@@ -1705,6 +1810,14 @@ function App() {
         />
       </div>
 
+      <StatusBar
+        sandbox={!!(activeTab && sandboxed[activeTab.focused])}
+        onOpenPalette={() => {
+          refreshSessions();
+          setPaletteOpen(true);
+        }}
+      />
+
       {paletteOpen && (
         <CommandPalette
           commands={paletteCommands}
@@ -1721,10 +1834,23 @@ function App() {
         />
       )}
 
+      {colorMenu && (
+        <TabColorPicker
+          x={colorMenu.x}
+          y={colorMenu.y}
+          current={state.tabs.find((t) => t.id === colorMenu.tabId)?.color}
+          onPick={(c) => setTabColor(colorMenu.tabId, c)}
+          onReset={() => setTabColor(colorMenu.tabId, undefined)}
+          onClose={() => setColorMenu(null)}
+        />
+      )}
+
       {settingsOpen && (
         <Settings
           settings={settings}
           onChange={setSettings}
+          bindings={bindings}
+          onChangeBindings={setBindings}
           onClose={() => setSettingsOpen(false)}
         />
       )}
