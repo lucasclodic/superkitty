@@ -101,6 +101,7 @@ Keyboard shortcuts are **reassignable** (idea #3): `src/shortcuts.ts` is the sin
 | Zoom / un-zoom focused pane (kitty `toggle_layout stack`) | `⌃⇧Z`, `⌘⇧↵` |
 | Next layout (`tall`→`fat`→`grid`→`horizontal`→`vertical`→`stack`) | `⌃⇧L` |
 | Visual layout picker (titlebar ▦ button, mouse) | — |
+| Zoom text (font size: enlarge / shrink / reset, global, idea #23 — matched by **character** `e.key` in `App.onKeyDown`, not e.code, so AZERTY/QWERTY both work; not in the reassignable `ACTIONS`) | `⌘+` (`⌘=`) / `⌘-` / `⌘0` |
 | Scroll line / page / top / bottom (tmux copy-mode) | `⌃⇧↑/↓`, `⌃⇧PgUp/PgDn`, `⌃⇧Home`, `⌃⇧End` |
 | Scroll to prev / next prompt (needs OSC 133 marks) | `⌥⌘↑` / `⌥⌘↓` |
 | Command palette (fuzzy, all actions + tmux sessions) | `⌘K` |
@@ -121,9 +122,28 @@ The custom app menu in `lib.rs` deliberately omits Window>Close/Minimize so `⌘
 - The global Quake hotkey (`⌃\``) needs **macOS Accessibility permission** to capture keys system-wide; until granted (System Settings → Privacy & Security → Accessibility) it silently no-ops. Registration is best-effort in `lib.rs` so a failure never blocks launch.
 - The sandbox (idea #5) is **write-confinement** (Seatbelt profile: reads open so node/git/claude work, writes limited to the project dir + temp + a few caches). Stricter read-confinement would likely break Claude's config/cache access, so it's intentionally not the default.
 
+### Clipboard paste of files/folders (idea #4) — hard-won specifics
+
+A ⌘V of a Finder copy was the source of a long debugging saga; the moving parts, so the next person doesn't re-derive them:
+
+- **A real Finder ⌘C puts a *file-reference URL* on the pasteboard, not a path.** `clipboard_file_paths` (`pty.rs`) reads `public.file-url` off each `NSPasteboardItem` (`pasteboardItems()`), but that value is `file:///.file/id=6571367.1542935/` — an opaque node id. `NSURL.path()` only **half-resolves** it (→ `/Users`); you MUST go through **`NSURL.filePathURL()`** to get the true POSIX path. The legacy `NSFilenamesPboardType` is kept only as a *fallback* — modern Finder doesn't populate it; only `osascript 'set the clipboard to (POSIX file …)'` does (which is why the old standalone test "passed" while the app failed). Needs the `NSPasteboardItem` feature on `objc2-app-kit`.
+- **The webview's DOM `clipboardData` is useless for the real path** (WebKit exposes only an icon preview / a `"Files"` type with empty `text/plain` + `text/uri-list`). The native NSPasteboard read is the only source of truth; the frontend just gates on "is there any file/image item?" then calls `clipboard_file_paths`.
+- **`injectPaths` (`App.tsx`): image paths → bracketed paste (`ESC[200~ … ESC[201~`); everything else → PLAIN text; never shell-escape.** claude renders `[Image #N]` only for an *image* path sent as a bracketed paste (it then attaches the file). A bracketed paste of a **folder / non-image** makes claude try to attach it and **silently drop it** → nothing appears. So non-images go as plain text, which claude inserts as the literal path. And do **not** backslash-escape (`Analyse\ Savage\ Step`): claude wants the literal path; escaping breaks resolution and rendering for names with spaces.
+- **The capture-phase `paste` listener must `stopImmediatePropagation()`, not just `preventDefault()`** — otherwise xterm.js's own paste handler ALSO reads the clipboard and double-injects (a single pasted image appeared twice).
+- claude **only echoes pasted input when it's idle at the prompt** (and discards/garbles a rapid burst of ⌘V). When verifying, paste once into an *idle* pane.
+- **Debugging tip:** `tmux capture-pane -p -t superkitty-<id>` shows what claude *actually* received/renders, independent of the (sometimes blank) xterm draw — the only reliable way to verify paste behavior without a screenshot.
+
+### "Black / frozen pane" after a webview reload or remount
+
+`pty_spawn` used to **early-return if a PTY for the `id` already existed**. On a Vite HMR page reload (or any remount) the Rust backend — and the old `PtyInstance` — stay alive (a page reload skips React cleanup, so `pty_detach` never runs), but the new xterm created a brand-new `Channel`. The early return left that channel **unwired**: the reader thread kept streaming to the dead old channel, the fresh pane got zero bytes, and no `pty_redraw`/`tmux refresh-client` could fix it (the bytes went to the dead channel). Fix: `PtyInstance.output` is a swappable `Arc<Mutex<Channel>>`; on remount `pty_spawn` **rewires** it to the new channel and returns, and the frontend's existing `pty_redraw` (`Terminal.tsx` `tryAttachRedraw` backoff) makes tmux re-send the screen → the pane repaints. A *clean* app restart never hit this (fresh backend → fresh spawn → `tryAttachRedraw`); only reloads/remounts did.
+
 ## Idea box (IDEAS.md)
 
 `IDEAS.md` (in French) is the project's feature backlog — a numbered list of friction-first ideas with `[ ]`/`[~]`/`[x]` checkboxes. **Workflow rule:** whenever you ship a real feature, check whether it corresponds to an item in `IDEAS.md`. If it does, mark that item (and its sub-tasks) as done (`[x]`), and update the roadmap below if relevant. Keep the idea box in sync with what's actually built — don't let shipped features sit as `[ ]`.
+
+## Handoff briefs (handoff/)
+
+When a bug or chantier is going to be handed off to another dev (human or a more senior agent) to investigate from scratch, write a **handoff brief** under `handoff/` instead of dumping the context into chat. A brief is an investigation dossier, not a ticket: it states what we *wanted*, what's *broken*, **what's already been tried with each attempt's verification status** (✅ verified / ❓ unverified / ❌ ruled out — this is what stops the next dev re-doing work), the relevant `file:line` references, and the remaining leads. See `handoff/README.md` for the naming convention (`AAAA-MM-JJ-sujet.md`) and the brief skeleton. **Workflow rule:** the dev who picks up a brief updates the *same* file as they go (attempts, statuses, what they eliminated); on resolution, set status `✅`, record the real cause + fix, and propagate anything durable into `IDEAS.md`/this file. Keep solved briefs as a trace.
 
 ## Roadmap (friction-first)
 
