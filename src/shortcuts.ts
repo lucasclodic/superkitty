@@ -1,11 +1,11 @@
 // Reassignable keyboard shortcuts (single source of truth).
 //
 // A *chord* is a canonical, keyboard-layout-independent string built from a
-// KeyboardEvent: modifiers in a fixed order + the physical `e.code`. We use
-// `e.code` (not `e.key`) so a binding works the same on AZERTY/QWERTY — the
-// old listener already did this for the digit row (App.tsx) and we generalize
-// it here. Examples: "M+KeyT", "C+S+KeyW", "S+M+KeyT", "A+M+ArrowUp",
-// "M+Digit1", "C+Tab".
+// KeyboardEvent: modifiers in a fixed order + a key token. For the alphanumeric
+// /punctuation block the token comes from the *produced character* (`e.key`),
+// so a binding follows the PRINTED key on AZERTY and QWERTY alike; digits,
+// arrows, Enter/Tab, F-keys and dead/IME keys keep the physical `e.code`.
+// Examples: "M+KeyT", "C+S+KeyW", "S+M+KeyT", "A+M+ArrowUp", "M+Digit1", "C+Tab".
 //
 // The App owns the `run` functions (they close over component state); this
 // module only owns *metadata* (id, label, group, default chords) + the chord
@@ -32,6 +32,23 @@ function chordParts(
   return parts.join("+");
 }
 
+// Produced character → canonical US-position token. Both members of each US
+// shift-pair map to the same token, so the chord stays Shift-immune (⌃] and
+// ⌃⇧] both → "BracketRight"). Vocabulary matches CODE_LABEL below.
+const CHAR_CODE: Record<string, string> = {
+  "`": "Backquote",   "~": "Backquote",
+  "-": "Minus",       "_": "Minus",
+  "=": "Equal",       "+": "Equal",
+  "[": "BracketLeft", "{": "BracketLeft",
+  "]": "BracketRight", "}": "BracketRight",
+  "\\": "Backslash",  "|": "Backslash",
+  ";": "Semicolon",   ":": "Semicolon",
+  "'": "Quote",       '"': "Quote",
+  ",": "Comma",       "<": "Comma",
+  ".": "Period",      ">": "Period",
+  "/": "Slash",       "?": "Slash",
+};
+
 /**
  * Canonical chord for an event, or `null` when it carries no Ctrl/Alt/Meta
  * modifier — those keystrokes belong to the terminal and must never be
@@ -42,17 +59,23 @@ export function chordFromEvent(e: KeyboardEvent): Chord | null {
   // Ignore lone modifier presses (e.code is "MetaLeft", "ShiftRight", …).
   if (/^(Control|Alt|Shift|Meta)(Left|Right)$/.test(e.code)) return null;
 
-  // For letters, key off the *produced character* (e.key) rather than the
-  // physical position (e.code), so a binding follows the printed letter on
-  // AZERTY too (e.g. ⌃⇧W = the 'W' key, not the QWERTY-W position). We keep the
-  // "KeyX" token shape so display + defaults stay uniform. Everything else
-  // (digits, arrows, Enter, brackets, comma, backquote…) uses e.code: it's
-  // immune to Shift transforms (⌃⇧] stays "BracketRight", not "}") and matches
-  // kitty's positional conventions. Digits use e.code so ⌘1-9 works on AZERTY,
-  // where the digit needs Shift.
+  // Default to the physical position (layout-immune): digits stay "DigitN",
+  // arrows/Enter/Tab/F-keys and dead/IME keys ("Dead"/"Process", length > 1)
+  // keep their e.code. For the alphanum/punctuation block we key off the
+  // *produced character* instead, so a binding follows the PRINTED key on any
+  // layout (AZERTY: the ',' key has e.code "KeyM" but prints ',' → "Comma").
+  // The CHAR_CODE pairs keep it Shift-immune (⌃⇧] and ⌃] both → "BracketRight").
+  // Digit/Numpad codes are excluded so ⌘1-9 stay "DigitN" — on AZERTY the digit
+  // row prints punctuation unshifted (Digit3 → '"'), which must NOT become
+  // "Quote".
   let code = e.code;
-  if (/^Key[A-Z]$/.test(e.code) && /^[a-zA-Z]$/.test(e.key)) {
-    code = "Key" + e.key.toUpperCase();
+  const k = e.key;
+  if (k.length === 1 && !/^(Digit|Numpad)/.test(e.code)) {
+    if (/^[a-zA-Z]$/.test(k)) {
+      code = "Key" + k.toUpperCase();
+    } else if (CHAR_CODE[k]) {
+      code = CHAR_CODE[k];
+    }
   }
   return chordParts(
     { ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, meta: e.metaKey },
@@ -143,7 +166,8 @@ export const ACTIONS: ActionMeta[] = [
   { id: "goto-tab-9", group: "Onglets", label: "Aller à l'onglet 9", defaultChords: ["M+Digit9"] },
 
   // --- Fenêtres (panes) ---
-  { id: "new-window", group: "Fenêtres", label: "Nouvelle fenêtre (pane)", defaultChords: ["M+KeyD", "M+Enter", "C+S+Enter"] },
+  { id: "new-window", group: "Fenêtres", label: "Nouvelle fenêtre (normale)", defaultChords: ["M+KeyD", "M+Enter", "C+S+Enter"] },
+  { id: "new-tmux-window", group: "Fenêtres", label: "Nouvelle fenêtre tmux (persistante)", defaultChords: ["A+M+KeyD"] },
   { id: "close-window", group: "Fenêtres", label: "Fermer la fenêtre", defaultChords: ["C+S+KeyW", "S+M+KeyW", "S+M+KeyD"] },
   { id: "zoom", group: "Fenêtres", label: "Agrandir / réduire (zoom)", defaultChords: ["C+S+KeyZ", "S+M+Enter"] },
   { id: "promote", group: "Fenêtres", label: "Promouvoir en fenêtre principale", defaultChords: ["C+S+Backquote", "S+M+KeyM"] },
@@ -179,6 +203,7 @@ export const ACTIONS: ActionMeta[] = [
 
   // --- Général ---
   { id: "palette", group: "Général", label: "Palette de commandes", defaultChords: ["M+KeyK"] },
+  { id: "command-bar", group: "Général", label: "Lanceur de commande (suggestions)", defaultChords: ["M+KeyL"] },
   { id: "settings", group: "Général", label: "Réglages", defaultChords: ["M+Comma"] },
   { id: "file-picker", group: "Général", label: "Insérer un chemin de fichier", defaultChords: ["M+KeyP"] },
   { id: "sidebar", group: "Général", label: "Sessions tmux", defaultChords: ["M+KeyB"] },

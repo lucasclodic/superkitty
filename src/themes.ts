@@ -12,7 +12,48 @@ export interface SkSettings {
   notify: boolean;
   /** Play a short sound when an unwatched pane's agent finishes (idea #6). */
   notifySound: boolean;
+  /** Install the semantic Claude Code Stop/Notification hooks (idea #6) so OS
+   *  notifications fire reliably AND only on a real turn-end / "needs you",
+   *  never on an ambiguous native bell. Edits ~/.claude/settings.json (active
+   *  only inside superkitty). Default ON. */
+  reinforceAgentDone: boolean;
+  /** True once the user has explicitly toggled `reinforceAgentDone` in Settings.
+   *  Lets the loader migrate a never-touched setting to the new default-ON
+   *  without overriding a deliberate opt-out (idea #6). */
+  reinforceAgentDoneUserSet: boolean;
+  /** Show a rotating keyboard-shortcut tip in the status bar (idea #22). */
+  hintsEnabled: boolean;
+  /** UI chrome: the classic violet tabs+grid (v1) or the « Platinum Noir »
+   *  project-rail + kitty-windowing direction (v2). Same engine underneath —
+   *  v2 only re-skins/re-arranges the already-mounted panes. Toggle is in the
+   *  titlebar, the command palette and Settings → Apparence. */
+  uiMode: "classic" | "v2";
+  /** v2 project rail width state: `full` (the 280px panel) or `mini` (a slim
+   *  icon strip — project tiles + the active project's sessions as agent icons
+   *  with a status badge, still navigable). Toggled by ⌘B and the rail ‹/›. */
+  railMode: "full" | "mini";
+  /** v2 project rail: agent launch presets (the icons on a project header). A
+   *  click opens a new window in that project and runs `command`. Customizable
+   *  in Settings → Agents (e.g. `claude --dangerously-skip-permissions`). */
+  agentPresets: AgentPreset[];
 }
+
+/** One agent-launch preset shown as an icon on a v2 project header. */
+export interface AgentPreset {
+  /** Stable id (also selects the built-in logo: claude|codex|gemini|generic). */
+  id: string;
+  label: string;
+  /** Shell command run in the new window (e.g. "claude", "codex", "gemini"). */
+  command: string;
+  /** Which built-in logo to draw. */
+  icon: "claude" | "codex" | "gemini" | "generic";
+}
+
+export const DEFAULT_AGENT_PRESETS: AgentPreset[] = [
+  { id: "claude", label: "Claude", command: "claude", icon: "claude" },
+  { id: "codex", label: "Codex", command: "codex", icon: "codex" },
+  { id: "gemini", label: "Gemini", command: "gemini", icon: "gemini" },
+];
 
 export const DEFAULT_FONT =
   '"JetBrains Mono", "SF Mono", Menlo, Monaco, "Courier New", monospace';
@@ -23,6 +64,12 @@ export const DEFAULT_SETTINGS: SkSettings = {
   fontSize: 14,
   notify: true,
   notifySound: true,
+  reinforceAgentDone: true,
+  reinforceAgentDoneUserSet: false,
+  hintsEnabled: true,
+  uiMode: "classic",
+  railMode: "full",
+  agentPresets: DEFAULT_AGENT_PRESETS,
 };
 
 /** A few monospace stacks offered in the Settings font picker. */
@@ -172,6 +219,34 @@ export const THEMES: Record<string, { label: string; theme: ITheme }> = {
 
 export const DEFAULT_THEME = THEMES.superkitty.theme;
 
+/** Warm graphite + cream xterm theme used by the « Platinum Noir » v2 chrome so
+ *  the terminal matches the surrounding ambiance (charte-noir-bureau.html / the
+ *  ui-proto). Applied live in v2 regardless of the picked THEME (v1 is
+ *  unchanged); the ANSI palette is the six-colour ribbon + cream tones. */
+export const PLATINUM_NOIR_THEME: ITheme = {
+  background: "#181612",
+  foreground: "#eae5d6",
+  cursor: "#6fb36a",
+  cursorAccent: "#181612",
+  selectionBackground: "#38342d",
+  black: "#2e2b25",
+  red: "#e2685e",
+  green: "#6fb36a",
+  yellow: "#f0c04e",
+  blue: "#54aec0",
+  magenta: "#a87fc4",
+  cyan: "#54aec0",
+  white: "#eae5d6",
+  brightBlack: "#8a8474",
+  brightRed: "#ee8a80",
+  brightGreen: "#8fcf8a",
+  brightYellow: "#f4d27a",
+  brightBlue: "#7fc9d8",
+  brightMagenta: "#c2a0dc",
+  brightCyan: "#7fc9d8",
+  brightWhite: "#f6f2e6",
+};
+
 const SETTINGS_KEY = "superkitty.settings.v1";
 
 export function loadSettings(): SkSettings {
@@ -194,12 +269,52 @@ export function loadSettings(): SkSettings {
             : DEFAULT_SETTINGS.fontSize,
         notify: typeof s.notify === "boolean" ? s.notify : true,
         notifySound: typeof s.notifySound === "boolean" ? s.notifySound : true,
+        // Migration (idea #6) : tant que l'utilisateur n'a pas choisi
+        // explicitement (UserSet), on force le nouveau défaut ON — les notifs
+        // fiables ne marchent QUE via ce hook. Un opt-out délibéré est respecté.
+        reinforceAgentDoneUserSet:
+          typeof s.reinforceAgentDoneUserSet === "boolean"
+            ? s.reinforceAgentDoneUserSet
+            : false,
+        reinforceAgentDone:
+          s.reinforceAgentDoneUserSet === true &&
+          typeof s.reinforceAgentDone === "boolean"
+            ? s.reinforceAgentDone
+            : true,
+        hintsEnabled:
+          typeof s.hintsEnabled === "boolean" ? s.hintsEnabled : true,
+        uiMode: s.uiMode === "v2" ? "v2" : "classic",
+        // `hidden` is gone (two modes now) → an old `hidden`/`mini` both land on
+        // the slim `mini`; anything else on the full panel.
+        railMode: s.railMode === "mini" || s.railMode === "hidden" ? "mini" : "full",
+        agentPresets: normalizePresets(s.agentPresets),
       };
     }
   } catch {
     /* corrupt → defaults */
   }
   return DEFAULT_SETTINGS;
+}
+
+/** Validate persisted agent presets, falling back to the defaults. */
+function normalizePresets(raw: unknown): AgentPreset[] {
+  if (!Array.isArray(raw)) return DEFAULT_AGENT_PRESETS;
+  const icons = ["claude", "codex", "gemini", "generic"] as const;
+  const out: AgentPreset[] = [];
+  for (const p of raw) {
+    if (!p || typeof p !== "object") continue;
+    const o = p as Record<string, unknown>;
+    if (typeof o.id !== "string" || typeof o.command !== "string") continue;
+    out.push({
+      id: o.id,
+      label: typeof o.label === "string" && o.label ? o.label : o.id,
+      command: o.command,
+      icon: (icons as readonly string[]).includes(o.icon as string)
+        ? (o.icon as AgentPreset["icon"])
+        : "generic",
+    });
+  }
+  return out.length ? out : DEFAULT_AGENT_PRESETS;
 }
 
 export function saveSettings(s: SkSettings) {

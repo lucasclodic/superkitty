@@ -13,15 +13,51 @@ import "@xterm/xterm/css/xterm.css";
  * session, so the running process and scrollback survive both a window close
  * and a layout change that remounts this component.
  */
+// Live xterm instances by pane id, so the app can drive a RAW pane's native
+// scrollback (raw panes have no tmux copy-mode to scroll through the backend).
+// Registered on mount, removed on unmount.
+export const paneTerminals = new Map<string, Terminal>();
+
+// Map a kitty scroll action onto xterm's native scrollback — used for RAW panes
+// only. Prompt navigation needs OSC 133 marks xterm doesn't track here, so it's
+// a no-op for raw.
+export function scrollXterm(term: Terminal | undefined, action: string) {
+  if (!term) return;
+  switch (action) {
+    case "line-up":
+      term.scrollLines(-1);
+      break;
+    case "line-down":
+      term.scrollLines(1);
+      break;
+    case "page-up":
+      term.scrollPages(-1);
+      break;
+    case "page-down":
+      term.scrollPages(1);
+      break;
+    case "top":
+      term.scrollToTop();
+      break;
+    case "bottom":
+      term.scrollToBottom();
+      break;
+  }
+}
+
 export function TerminalView({
   id,
   active,
   onFocus,
   onBell,
   onInteract,
+  onTitle,
+  onActivity,
+  initialCommand,
   cwd,
   session,
   sandbox,
+  kind,
   theme,
   fontFamily,
   fontSize,
@@ -30,19 +66,36 @@ export function TerminalView({
   active: boolean;
   onFocus: () => void;
   // Fired when this pane emits a terminal bell (BEL) — Claude Code rings it when
-  // it finishes / awaits input (idea #6).
-  onBell?: () => void;
+  // it finishes / awaits input (idea #6). The payload's `kind` tells apart a true
+  // turn-end ("stop"), Claude asking for you ("notification") and an ambiguous
+  // native/sub-agent bell ("unknown" → badge only). Absent on a legacy emit.
+  onBell?: (payload?: { kind?: string }) => void;
   // Fired on real user input in this pane (keystrokes/paste) — used to clear the
   // "agent finished" glow as soon as you interact, not merely on window focus (#6).
   onInteract?: () => void;
-  // Directory to start a freshly-created tmux session in (inherited from the
-  // source pane on ⌘D/⌘T). Ignored when re-attaching an existing session.
+  // Fired when the program sets the terminal title (OSC 0/2) — Claude Code sets
+  // it to the project/session name, and updates it on `/rename` (v2 rail names).
+  onTitle?: (title: string) => void;
+  // Fired (throttled) whenever output bytes flow — the v2 rail uses it to show a
+  // pane as "en cours" only while it's actually producing output (not just open).
+  onActivity?: () => void;
+  // A shell command the freshly-spawned shell execs immediately (v2 agent
+  // presets: clicking the Claude icon opens a window already running `claude`,
+  // with no visible shell prompt / typed command). Baked into pty_spawn. Fresh
+  // panes only.
+  initialCommand?: string;
+  // Directory to start a freshly-created session in (inherited from the source
+  // pane on ⌘D/⌘T). Ignored when re-attaching an existing tmux session.
   cwd?: string;
   // Adopt a specific tmux session by name instead of our own `superkitty-<id>`
   // (idea #2: re-attaching an external/raw session from the session sidebar).
   session?: string;
   // Confine the freshly-created shell's writes to its project dir (idea #5).
   sandbox?: boolean;
+  // "raw" (a normal ephemeral PTY — closing kills it; scroll via xterm) or "tmux"
+  // (a persistent session — closing detaches; scroll via tmux copy-mode). Frozen
+  // at mount; a pane never changes kind.
+  kind?: "raw" | "tmux";
   // Live theme/font (Settings, idea #3): applied on mount and updated in place
   // whenever they change, without recreating the terminal.
   theme: ITheme;
@@ -60,6 +113,8 @@ export function TerminalView({
   const sessionRef = useRef(session);
   // Same: sandboxing is decided at creation and fixed for a given pane id.
   const sandboxRef = useRef(sandbox);
+  // Same: the pane kind (raw|tmux) is fixed for a given pane id.
+  const kindRef = useRef(kind);
   // Latest theme/font so the (id-keyed) mount effect picks up the current
   // Settings; live changes go through the dedicated apply effect below.
   const themeRef = useRef(theme);
@@ -71,6 +126,12 @@ export function TerminalView({
   // Latest bell handler, read by the id-keyed mount listener.
   const onBellRef = useRef(onBell);
   onBellRef.current = onBell;
+  const onTitleRef = useRef(onTitle);
+  onTitleRef.current = onTitle;
+  const onActivityRef = useRef(onActivity);
+  onActivityRef.current = onActivity;
+  // Captured once: the initial command is meaningful only at the first spawn.
+  const initialCommandRef = useRef(initialCommand);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -82,13 +143,14 @@ export function TerminalView({
       cursorBlink: true,
       allowProposedApi: true,
       theme: themeRef.current,
-      // tmux owns all scrollback (it runs in the alternate screen), so xterm
-      // never needs any of its own. With 0, xterm v6 creates no scrollable area
-      // and so never renders its built-in (VS Code-style) scrollbar — keeping
-      // the pane free of any scrollbar (scroll via wheel / keyboard → tmux).
-      scrollback: 0,
+      // A RAW pane owns its scrollback in xterm (no tmux behind it): give it a
+      // real buffer so the wheel and the kitty scroll keys work natively. A TMUX
+      // pane keeps 0 — tmux owns the alternate-screen scrollback and xterm renders
+      // only the live screen (scroll goes through tmux copy-mode).
+      scrollback: kindRef.current === "raw" ? 50000 : 0,
     });
     termRef.current = term;
+    paneTerminals.set(id, term);
     const fit = new FitAddon();
     fitRef.current = fit;
     term.loadAddon(fit);
@@ -134,9 +196,17 @@ export function TerminalView({
         }
       });
     };
+    // Throttle the "output is flowing" signal to ~3/s — enough for the rail to
+    // light a pane as "en cours" while it's producing output, cheap otherwise.
+    let lastActivityFire = 0;
     const enqueue = (buf: ArrayBuffer) => {
       if (disposed) return;
       pending.push(new Uint8Array(buf));
+      const now = performance.now();
+      if (now - lastActivityFire > 350) {
+        lastActivityFire = now;
+        onActivityRef.current?.();
+      }
       if (!scheduled && !draining) {
         scheduled = true;
         rafId = requestAnimationFrame(flush);
@@ -190,13 +260,47 @@ export function TerminalView({
         .catch(() => {});
     };
 
+    // Raw panes have no server-side screen to re-request, so a lost/partial first
+    // paint (claude drawing before the slot had its final size, fit() on a 0px
+    // container, an rAF throttled at mount) leaves the pane permanently black —
+    // tmux's refresh-client trick can't apply. We instead run a few staggered
+    // repaint passes: re-fit (re-asserts the real size once the layout settled),
+    // term.refresh (repaints xterm's own buffer if bytes arrived but weren't
+    // drawn), and pty_redraw (SIGWINCH → claude redraws itself). claude takes
+    // 1-3s to draw its first frame, so a single immediate redraw is too early;
+    // the schedule is bounded (no retry-until — the foreground pid always exists).
+    const scheduleRawRepaints = () => {
+      const rawRepaintDelays = [200, 700, 1600, 3200];
+      for (const d of rawRepaintDelays) {
+        attachRedrawTimers.push(
+          window.setTimeout(() => {
+            if (disposed) return;
+            try {
+              fit.fit();
+            } catch {
+              /* container not measurable yet */
+            }
+            try {
+              term.refresh(0, term.rows - 1);
+            } catch {
+              /* terminal disposed */
+            }
+            invoke("pty_redraw", { id }).catch(() => {});
+          }, d),
+        );
+      }
+    };
+
     (async () => {
       const offExit = await listen(`pty://exit/${id}`, () => {
         term.write("\r\n\x1b[2m[session ended]\x1b[0m\r\n");
       });
-      const offBell = await listen(`pty://bell/${id}`, () => {
-        onBellRef.current?.();
-      });
+      const offBell = await listen<{ kind?: string } | undefined>(
+        `pty://bell/${id}`,
+        (e) => {
+          onBellRef.current?.(e.payload);
+        },
+      );
       if (disposed) {
         offExit();
         offBell();
@@ -210,16 +314,31 @@ export function TerminalView({
         cwd: cwdRef.current,
         session: sessionRef.current,
         sandbox: sandboxRef.current,
+        kind: kindRef.current,
+        // v2 agent preset: the shell execs this command straight away (the agent
+        // shows up immediately, never a prompt with the command typed into it).
+        // Baked into the spawn — see pty_spawn in src-tauri/src/pty.rs.
+        initialCommand: initialCommandRef.current,
         onOutput: outputChannel,
       });
       if (disposed) return;
-      attachRedrawTimers.push(window.setTimeout(tryAttachRedraw, redrawBackoff[redrawStep++]));
+      // tmux retries until its client attaches (refresh-client); raw runs its own
+      // staggered SIGWINCH/refresh passes (no client/server to wait on). Both
+      // rescue a black pane whose first paint was lost on relaunch.
+      if (kindRef.current === "raw") {
+        scheduleRawRepaints();
+      } else {
+        attachRedrawTimers.push(window.setTimeout(tryAttachRedraw, redrawBackoff[redrawStep++]));
+      }
     })();
 
     const dataDisposable = term.onData((data) => {
       onInteract?.();
       invoke("pty_write", { id, data });
     });
+    // The program's title (OSC 0/2) → the v2 rail's project/session name. Claude
+    // Code sets it and updates it on `/rename`.
+    const titleDisposable = term.onTitleChange((t) => onTitleRef.current?.(t));
     let redrawTimer = 0;
     const resizeDisposable = term.onResize(({ cols, rows }) => {
       invoke("pty_resize", { id, cols, rows });
@@ -227,11 +346,13 @@ export function TerminalView({
       // SIGWINCH redraw can land partial, leaving a blank strip until copy-mode
       // (scroll) repaints. Debounced so it runs once, after the LAST resize and
       // after tmux has processed the SIGWINCH at the final size.
-      if (redrawTimer) clearTimeout(redrawTimer);
-      redrawTimer = window.setTimeout(() => {
-        redrawTimer = 0;
-        invoke("pty_redraw", { id }).catch(() => {});
-      }, 120);
+      if (kindRef.current !== "raw") {
+        if (redrawTimer) clearTimeout(redrawTimer);
+        redrawTimer = window.setTimeout(() => {
+          redrawTimer = 0;
+          invoke("pty_redraw", { id }).catch(() => {});
+        }, 120);
+      }
     });
 
     // Coalesce resize bursts into a single fit, run on the NEXT frame — i.e.
@@ -264,11 +385,18 @@ export function TerminalView({
       attachRedrawTimers.forEach(clearTimeout);
       resizeObserver.disconnect();
       dataDisposable.dispose();
+      titleDisposable.dispose();
       resizeDisposable.dispose();
       unlisteners.forEach((off) => off());
-      // Detach (keep tmux alive). Deliberate close goes through pty_kill,
-      // invoked by App before this component unmounts.
-      invoke("pty_detach", { id });
+      paneTerminals.delete(id);
+      // A RAW pane is ephemeral: unmount = close = kill its shell. A TMUX pane
+      // detaches (keeps its session alive); deliberate tmux kills go through
+      // pty_kill from App before this component unmounts.
+      if (kindRef.current === "raw") {
+        invoke("pty_kill", { id });
+      } else {
+        invoke("pty_detach", { id });
+      }
       term.dispose();
       termRef.current = null;
       fitRef.current = null;

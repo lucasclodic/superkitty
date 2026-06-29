@@ -1,21 +1,37 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
-import { TerminalView } from "./Terminal";
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from "@tauri-apps/plugin-notification";
+import { TerminalView, paneTerminals, scrollXterm } from "./Terminal";
 import { SessionSidebar, TmuxSession } from "./SessionSidebar";
-import { StatusBar } from "./StatusBar";
+import { ProjectRail, V2Crumb, RailProject, SessionStatus } from "./ProjectRail";
+import { StatusBar, PaneContext } from "./StatusBar";
 import { LayoutPicker } from "./LayoutPicker";
+import { NotificationCenter, NotifItem } from "./NotificationCenter";
 import { CommandPalette, Command } from "./CommandPalette";
 import { ContextMenu } from "./ContextMenu";
 import { TabColorPicker } from "./TabColorPicker";
 import { Settings } from "./Settings";
 import { FilePicker } from "./FilePicker";
+import { CommandBar } from "./CommandBar";
 import { Scratchpad } from "./Scratchpad";
 import { PromptComposer } from "./PromptComposer";
 import { QuickPrompt } from "./QuickPrompt";
-import { SkSettings, loadSettings, saveSettings, themeOf, DEFAULT_SETTINGS } from "./themes";
+import {
+  SkSettings,
+  AgentPreset,
+  loadSettings,
+  saveSettings,
+  themeOf,
+  DEFAULT_SETTINGS,
+  PLATINUM_NOIR_THEME,
+} from "./themes";
 import {
   Bindings,
   buildLookup,
@@ -24,6 +40,7 @@ import {
   resolveBindings,
   saveBindings,
 } from "./shortcuts";
+import { buildHints } from "./hints";
 import {
   Direction,
   LAYOUT_CYCLE,
@@ -55,6 +72,11 @@ interface Tab {
   color?: string;
 }
 
+/** How a pane is backed: a normal ephemeral PTY (`raw`, the ⌘D default — closing
+ *  it ends the shell) or a persistent tmux session (`tmux`, opened on demand —
+ *  survives a window close and shows in the session sidebar). */
+type PaneKind = "raw" | "tmux";
+
 /** A pane snapshot kept in the closed-items history, enough to reopen it. */
 interface ClosedPane {
   id: string;
@@ -63,6 +85,9 @@ interface ClosedPane {
   // Last known cwd, captured when a tab is killed so a fresh reopen lands in the
   // right folder (reattached live panes keep their own cwd, so it's unused there).
   cwd?: string;
+  // raw | tmux, so a reopened tab respawns each pane the same way (raw → fresh
+  // shell, tmux → fresh session). Absent in legacy entries → treated as tmux.
+  kind?: PaneKind;
 }
 
 /** One entry in the reopen-closed history (⌘⇧T): a single pane or a whole tab. */
@@ -86,6 +111,21 @@ interface AppState {
   // `superkitty-<id>` — i.e. an adopted external/raw session (idea #2). Panes
   // without an entry use the default and reattach naturally on restart.
   sessions: Record<string, string>;
+  // Per-pane backing kind. New panes are stored explicitly (raw for ⌘D, tmux for
+  // the on-demand command); a pane with no entry defaults to tmux (a pre-feature
+  // restored pane that has a live tmux session). Persisted inside this blob.
+  paneKind: Record<string, PaneKind>;
+  // Commande de lancement par pane RAW d'agent (ex. "claude"), capturée quand un
+  // preset l'a spawné. Persistée pour qu'un redémarrage RELANCE l'agent (un pane
+  // raw n'a aucun état serveur — la commande est la seule chose à rejouer). Au
+  // restore, une commande Claude est rejouée en `claude --continue` (reprend la
+  // dernière conversation du dossier). Les panes ⌘D simples n'ont pas d'entrée.
+  paneCommand: Record<string, string>;
+  // cwd de lancement par pane d'agent, pour que l'agent rejoué reparte dans son
+  // dossier projet (c'est aussi ce qui fait que `claude --continue` retrouve la
+  // bonne conversation). Le cwd de lancement = cwd au moment de quitter, car
+  // claude ne déplace jamais le cwd du shell parent.
+  paneCwd: Record<string, string>;
   // Recently closed panes/tabs, oldest→newest, capped. ⌘⇧T pops the last one
   // (idea #1). Persisted so the history survives an app restart.
   closed: ClosedItem[];
@@ -106,6 +146,68 @@ const LAYOUT_LABEL: Record<LayoutName, string> = {
 /** The tmux session name a pane id drives: its adopted name or the default. */
 const sessionNameOf = (s: AppState, pid: string): string =>
   s.sessions[pid] ?? `${SK_PREFIX}${pid}`;
+
+/** The backing kind a pane id uses: its stored kind, or tmux for a legacy/unknown
+ *  pane (which has a live tmux session to reattach). */
+const kindOf = (s: AppState, pid: string): PaneKind => s.paneKind[pid] ?? "tmux";
+
+/** The agent brand icon a launch command maps to (claude|codex|gemini|generic),
+ *  matched on the leading token so flags (e.g. `claude --dangerously-skip-
+ *  permissions`) still resolve to a preset. */
+const agentIconForCommand = (
+  command: string,
+  presets: AgentPreset[],
+): AgentPreset["icon"] => {
+  // Leading token reduced to its bare program name: strip a login-shell `-`
+  // prefix and any directory, so a *captured* foreground argv (`/Users/…/claude
+  // --x`, `-zsh`, `/bin/zsh -l`) matches — or doesn't — a preset whose command
+  // is just `claude`.
+  const head = (c: string) =>
+    ((c.trim().split(/\s+/)[0] || "").replace(/^-/, "").split("/").pop() || "");
+  return presets.find((p) => head(p.command) === head(command))?.icon ?? "generic";
+};
+
+/** Per-agent "resume the last conversation" flag, applied ONLY when replaying a
+ *  persisted command at restart (never at first launch). Only Claude has a
+ *  reliable auto-resume flag for now; extend as other agents gain one. */
+const RESUME_FLAG: Partial<Record<AgentPreset["icon"], string>> = {
+  claude: "--continue",
+};
+
+/** Transform a persisted launch command into its restart form: a Claude command
+ *  becomes `claude --continue` (resume the folder's last conversation) unless it
+ *  already carries a resume flag; other agents are replayed unchanged. */
+const resumeCommand = (command: string, presets: AgentPreset[]): string => {
+  const flag = RESUME_FLAG[agentIconForCommand(command, presets)];
+  if (!flag) return command;
+  if (/(^|\s)(--continue|-c|--resume)(\s|$)/.test(command)) return command;
+  return `${command} ${flag}`;
+};
+
+/** Rebuild `spawnCmdRef` from the persisted per-pane commands, each mapped to its
+ *  restart (resume) form — so restored agent panes re-launch their agent. */
+const seedSpawnCommands = (
+  paneCommand: Record<string, string>,
+  presets: AgentPreset[],
+): Record<string, string> => {
+  const out: Record<string, string> = {};
+  for (const [pid, cmd] of Object.entries(paneCommand)) {
+    out[pid] = resumeCommand(cmd, presets);
+  }
+  return out;
+};
+
+/** Rebuild `paneAgent` (v2 rail brand marks) from the persisted commands. */
+const seedPaneAgents = (
+  paneCommand: Record<string, string>,
+  presets: AgentPreset[],
+): Record<string, AgentPreset["icon"]> => {
+  const out: Record<string, AgentPreset["icon"]> = {};
+  for (const [pid, cmd] of Object.entries(paneCommand)) {
+    out[pid] = agentIconForCommand(cmd, presets);
+  }
+  return out;
+};
 
 /** Cap on the reopen-closed history (idea #1), newest kept at the end. */
 const CLOSED_CAP = 25;
@@ -171,6 +273,27 @@ function pickTabColor(used: (string | undefined)[]): string {
 
 const basename = (p: string) => p.replace(/\/+$/, "").split("/").pop() || p;
 
+// Foreground command names that mean "nothing is really running" (a bare login
+// shell / tmux). Used both for the ⌘W close confirmation (idea #13) and the v2
+// rail status (a non-shell foreground = an agent/editor is busy).
+const SHELL_CMDS = new Set([
+  "zsh",
+  "-zsh",
+  "bash",
+  "-bash",
+  "sh",
+  "-sh",
+  "fish",
+  "-fish",
+  "login",
+  "tmux",
+]);
+
+// Fenêtre (ms) pendant laquelle la sortie qui suit une frappe est considérée
+// comme un ECHO de cette frappe (claude redessine son prompt), pas comme du
+// vrai travail → le rail v2 ne s'allume pas « en cours » quand tu tapes juste.
+const INPUT_ECHO_MS = 600;
+
 /** Save a clipboard/pasted image blob to ~/.superkitty/dropped/ via the backend,
  *  returning its path (ideas #4/#16). Null on failure. */
 async function saveImageBlob(blob: File): Promise<string | null> {
@@ -197,6 +320,10 @@ function makeInitialState(): AppState {
     ],
     activeTabId: tid,
     sessions: {},
+    // The default pane is a normal raw terminal (no tmux).
+    paneKind: { [pid]: "raw" },
+    paneCommand: {},
+    paneCwd: {},
     closed: [],
   };
 }
@@ -281,6 +408,7 @@ function normalizeClosed(raw: any): ClosedItem[] {
           id: p.id,
           session: typeof p.session === "string" ? p.session : undefined,
           cwd: typeof p.cwd === "string" ? p.cwd : undefined,
+          kind: p.kind === "raw" || p.kind === "tmux" ? p.kind : undefined,
         }
       : null;
   const out: ClosedItem[] = [];
@@ -319,6 +447,9 @@ function loadState(): AppState {
         tabs?: any[];
         activeTabId?: string;
         sessions?: Record<string, string>;
+        paneKind?: Record<string, string>;
+        paneCommand?: Record<string, string>;
+        paneCwd?: Record<string, string>;
         closed?: any[];
       };
       const tabs = (saved.tabs ?? [])
@@ -351,7 +482,32 @@ function loadState(): AppState {
         for (const [pid, name] of Object.entries(saved.sessions ?? {})) {
           if (livePanes.has(pid)) sessions[pid] = name;
         }
-        return { tabs, activeTabId, sessions, closed };
+        // Migrate pane kinds: keep saved raw/tmux for live panes; a restored pane
+        // with no saved kind predates the feature → it has a tmux session, so tmux.
+        const savedKind = saved.paneKind ?? {};
+        const paneKind: Record<string, PaneKind> = {};
+        livePanes.forEach((pid) => {
+          paneKind[pid] = savedKind[pid] === "raw" ? "raw" : "tmux";
+        });
+        // Keep the per-pane launch command + cwd only for live panes (élague les
+        // entrées des panes disparus) — used to re-launch agent panes at startup.
+        const savedCmd = saved.paneCommand ?? {};
+        const savedCwd = saved.paneCwd ?? {};
+        const paneCommand: Record<string, string> = {};
+        const paneCwd: Record<string, string> = {};
+        livePanes.forEach((pid) => {
+          if (typeof savedCmd[pid] === "string") paneCommand[pid] = savedCmd[pid];
+          if (typeof savedCwd[pid] === "string") paneCwd[pid] = savedCwd[pid];
+        });
+        // Retain kinds for panes referenced only by the closed history so a ⌘⇧T
+        // reopen respawns them the right way.
+        closed.forEach((c) => {
+          const ps = c.kind === "pane" ? [c.pane] : c.panes;
+          ps.forEach((p) => {
+            if (p.kind) paneKind[p.id] = p.kind;
+          });
+        });
+        return { tabs, activeTabId, sessions, paneKind, paneCommand, paneCwd, closed };
       }
 
       // No restorable tabs, but the closed history (still-detached sessions) may
@@ -379,6 +535,9 @@ function loadState(): AppState {
 }
 
 function App() {
+  // Load settings once up front so the mount-time seeds below (paneAgent /
+  // spawnCmdRef) can resolve agent presets without re-parsing localStorage.
+  const [initialSettings] = useState(loadSettings);
   const [state, setState] = useState<AppState>(loadState);
   // Pane currently highlighted as the drop target while a file is dragged over.
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
@@ -420,11 +579,29 @@ function App() {
   >(null);
 
   // Pane ids that rang their bell while unwatched — badged until you look at
-  // them (idea #6). Not persisted (transient activity).
+  // them (idea #6). Not persisted (transient activity). `activity` = anything
+  // that lit the glow (green "done"/has-activity); `need` = the subset where
+  // Claude is actually blocked waiting on you (a `Notification` hook → orange
+  // "te réclame"). `need ⊆ activity`; both clear together when you engage.
   const [activity, setActivity] = useState<Set<string>>(() => new Set());
+  const [need, setNeed] = useState<Set<string>>(() => new Set());
+  // Which agent each pane is running (claude|codex|gemini|generic), for the v2
+  // rail brand icons. Set at launch from the preset that spawned the pane.
+  // Reconstructed at startup from the persisted `paneCommand` — honest again now
+  // that a restored agent pane actually re-launches its agent (not a bare shell).
+  const [paneAgent, setPaneAgent] = useState<Record<string, AgentPreset["icon"]>>(
+    () => seedPaneAgents(state.paneCommand, initialSettings.agentPresets),
+  );
+  // Debounce of the OS cues (notif + sound) per pane, so a burst of BELs (Claude
+  // can emit several; the opt-in hook adds one more) fires the cues only once
+  // every ~500ms. The badge itself is idempotent so it's not debounced (idea #6).
+  const bellDebounceRef = useRef<Set<string>>(new Set());
 
   // ---- settings: theme, font (idea #3) ----
-  const [settings, setSettings] = useState<SkSettings>(loadSettings);
+  const [settings, setSettings] = useState<SkSettings>(() => initialSettings);
+  // Mirror so the once-bound keydown listener can read the live uiMode (v2).
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsOpenRef = useRef(settingsOpen);
   settingsOpenRef.current = settingsOpen;
@@ -439,6 +616,14 @@ function App() {
     saveBindings(bindings);
   }, [bindings]);
 
+  // Rotating shortcut tips shown bottom-left in the status bar (idea #22).
+  // Built from the live bindings so they follow any reassignment; empty when
+  // disabled in Settings.
+  const hints = useMemo(
+    () => (settings.hintsEnabled ? buildHints(resolveBindings(bindings)) : []),
+    [settings.hintsEnabled, bindings],
+  );
+
   // ---- file picker (idea #15): null = closed, else the cwd to list ----
   const [filePicker, setFilePicker] = useState<{ cwd: string | null } | null>(
     null,
@@ -446,8 +631,35 @@ function App() {
   const filePickerOpenRef = useRef(false);
   filePickerOpenRef.current = filePicker !== null;
 
+  // ---- command launcher (idea #24, Warp-style ⌘L): null = closed, else the
+  // captured cwd + foreground of the target pane at open time ----
+  const [commandBar, setCommandBar] = useState<{
+    cwd: string | null;
+    foreground: string | null;
+  } | null>(null);
+  const commandBarOpenRef = useRef(false);
+  commandBarOpenRef.current = commandBar !== null;
+
   // ---- per-tab project name/tint + rename (idea #17) ----
   const [tabCwd, setTabCwd] = useState<Record<string, string>>({});
+  // node/git context of the active pane, shown in the status bar (idea #24).
+  const [paneContext, setPaneContext] = useState<PaneContext | null>(null);
+  // Terminal title per pane (OSC 0/2). Claude Code sets it and updates it on
+  // `/rename`, so the v2 rail uses it for project/session names (idea #2 v2).
+  const [paneTitle, setPaneTitle] = useState<Record<string, string>>({});
+  // Last-output timestamp per pane (ms). A ref (no re-render); the tick effect
+  // below derives the "en cours" set, so a pane is busy only while it's actually
+  // producing output — not merely because claude (a `node` process) is open.
+  const lastOutputRef = useRef<Map<string, number>>(new Map());
+  // Last-keystroke timestamp per pane (ms). Used to discard output that's just
+  // the echo of typing (within INPUT_ECHO_MS) so "en cours" stays honest.
+  const lastInputRef = useRef<Map<string, number>>(new Map());
+  const [outputBusy, setOutputBusy] = useState<Set<string>>(() => new Set());
+  // v2 rail UI: which projects show their sessions (the rail's full/mini/hidden
+  // width lives in settings.railMode so a reduced rail survives a relaunch).
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
+    () => new Set([state.activeTabId]),
+  );
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
   const renamingRef = useRef(renamingTabId);
   renamingRef.current = renamingTabId;
@@ -469,9 +681,19 @@ function App() {
 
   // Pending spawn directories, keyed by new pane id. A new pane (⌘D/⌘T)
   // inherits the current folder of the pane it was opened from (idea #18);
-  // TerminalView reads this when it spawns the tmux session. Restored/first
-  // panes have no entry and fall back to $HOME.
-  const spawnCwdRef = useRef<Record<string, string>>({});
+  // TerminalView reads this when it spawns the tmux session. Seeded at startup
+  // from the persisted per-pane cwd so a restored agent pane re-launches in its
+  // project folder; first/unknown panes fall back to $HOME.
+  const spawnCwdRef = useRef<Record<string, string>>({ ...state.paneCwd });
+
+  // Initial shell command to run in a freshly-created pane (v2 agent presets:
+  // clicking the Claude icon → a new window running `claude`), keyed by new pane
+  // id. TerminalView writes it once after the shell spawns. Seeded at startup
+  // from the persisted per-pane commands (in their resume form, e.g. `claude
+  // --continue`) so restored agent panes re-launch their agent automatically.
+  const spawnCmdRef = useRef<Record<string, string>>(
+    seedSpawnCommands(state.paneCommand, initialSettings.agentPresets),
+  );
 
   // Per-tab focus history, most-recent LAST (kitty `active_window_history`).
   // move_window / neighboring_window break a multi-candidate tie by picking the
@@ -504,6 +726,20 @@ function App() {
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+
+  // Réconcilie les hooks « notifications fiables » au lancement (idea #6) : les
+  // notifs macOS ne viennent QUE de ces hooks sémantiques (un BEL natif ambigu ne
+  // notifie plus), donc on les installe par défaut (migré ON), et on les retire si
+  // l'utilisateur a explicitement coupé le réglage. Idempotent — met aussi à niveau
+  // un ancien hook bare-BEL. Une seule fois au montage ; best-effort.
+  useEffect(() => {
+    invoke(
+      settings.reinforceAgentDone
+        ? "install_claude_hooks"
+        : "uninstall_claude_hooks",
+    ).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Persist per-tab scratchpad notes (idea #20).
   useEffect(() => {
@@ -571,6 +807,140 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusKey]);
 
+  // Warp-style status-bar context (idea #24): poll ONLY the active tab's focused
+  // pane (the one the bar shows) for node/git info — cheaper than all tabs, and
+  // a touch slower than the cwd poll since it spawns git/node each pass.
+  const activeFocused = state.tabs.find(
+    (t) => t.id === state.activeTabId,
+  )?.focused;
+  useEffect(() => {
+    if (!activeFocused) {
+      setPaneContext(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchCtx = async () => {
+      try {
+        const ctx = await invoke<PaneContext>("pane_context", {
+          id: activeFocused,
+        });
+        if (!cancelled) setPaneContext(ctx);
+      } catch {
+        if (!cancelled) setPaneContext(null);
+      }
+    };
+    fetchCtx();
+    const t = setTimeout(fetchCtx, 1200);
+    const iv = setInterval(fetchCtx, 2500);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      clearInterval(iv);
+    };
+  }, [activeFocused]);
+
+  // Keep RAW agent panes replayable across a restart. A raw pane has no
+  // server-side state, so we poll each one's foreground command (`ps`-backed);
+  // if it's a **known agent** (its leading token matches a preset, e.g. you
+  // typed `claude` by hand), we persist the exact command + cwd into AppState.
+  // When the pane drops back to a plain shell we **clear** it — so quitting
+  // claude before closing means a shell comes back, not claude (exactly as it
+  // was). The mount-time seed + `resumeCommand` then re-launch the agent on the
+  // next start (claude → `--continue`). Tmux panes persist via tmux → skipped.
+  useEffect(() => {
+    let cancelled = false;
+    const detect = async () => {
+      const presets = settingsRef.current.agentPresets;
+      const raws = stateRef.current.tabs
+        .flatMap((t) => t.panes)
+        .filter((pid) => kindOf(stateRef.current, pid) === "raw");
+      const found = await Promise.all(
+        raws.map(async (pid) => {
+          try {
+            const cmd = await invoke<string | null>("pty_foreground_cmd", {
+              id: pid,
+            });
+            if (cmd && agentIconForCommand(cmd, presets) !== "generic") {
+              let cwd: string | undefined;
+              try {
+                cwd =
+                  (await invoke<string | null>("pty_cwd", { id: pid })) ??
+                  undefined;
+              } catch {
+                /* pane may be gone */
+              }
+              return [pid, { cmd, cwd }] as const;
+            }
+          } catch {
+            /* pane may be gone */
+          }
+          return [pid, null] as const;
+        }),
+      );
+      if (cancelled) return;
+      setState((prev) => {
+        const paneCommand = { ...prev.paneCommand };
+        const paneCwd = { ...prev.paneCwd };
+        let changed = false;
+        for (const [pid, info] of found) {
+          if (info) {
+            if (paneCommand[pid] !== info.cmd) {
+              paneCommand[pid] = info.cmd;
+              changed = true;
+            }
+            if (info.cwd && paneCwd[pid] !== info.cwd) {
+              paneCwd[pid] = info.cwd;
+              changed = true;
+            }
+          } else if (pid in paneCommand) {
+            delete paneCommand[pid];
+            changed = true;
+          }
+        }
+        return changed ? { ...prev, paneCommand, paneCwd } : prev;
+      });
+    };
+    detect();
+    const t = setTimeout(detect, 1500);
+    const iv = setInterval(detect, 3000);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      clearInterval(iv);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Derive the v2 rail's "en cours" set from recent PTY output (lastOutputRef),
+  // v2 only. A pane is busy only while it's actually producing output, which is
+  // what makes the status honest: claude idle at its prompt (a live `node`
+  // process) produces nothing → not busy. Re-renders only when the set changes.
+  useEffect(() => {
+    if (settings.uiMode !== "v2") return;
+    const tick = () => {
+      const now = Date.now();
+      const next = new Set<string>();
+      lastOutputRef.current.forEach((t, pid) => {
+        if (now - t < 1600) next.add(pid);
+      });
+      setOutputBusy((prev) => {
+        if (prev.size === next.size && [...next].every((p) => prev.has(p)))
+          return prev;
+        return next;
+      });
+    };
+    tick();
+    const iv = setInterval(tick, 800);
+    return () => clearInterval(iv);
+  }, [settings.uiMode]);
+
+  // Keep the active project expanded in the rail (covers new tab, goto, drill).
+  useEffect(() => {
+    setExpandedProjects((s) =>
+      s.has(state.activeTabId) ? s : new Set(s).add(state.activeTabId),
+    );
+  }, [state.activeTabId]);
+
   // Record each tab's focused pane into its history whenever it changes, so the
   // most-recently-used tie-break (mostRecentIndex) has data to read.
   useEffect(() => {
@@ -601,6 +971,8 @@ function App() {
     if (cwd) spawnCwdRef.current[pid] = cwd;
     setState((prev) => ({
       ...prev,
+      // A new tab's pane is a normal raw terminal, like ⌘D.
+      paneKind: { ...prev.paneKind, [pid]: "raw" },
       tabs: [
         ...prev.tabs,
         {
@@ -616,52 +988,55 @@ function App() {
     }));
   };
 
-  // new_window: add a pane after the focused one; the layout rebalances all of
-  // them. There is no per-pane split direction (kitty has none outside `splits`).
-  // The new pane starts in the focused pane's folder (idea #18).
+  // Insert a new pane of the given kind after the focused one (the layout
+  // rebalances all of them); sets its backing kind atomically so TerminalView
+  // spawns it raw vs tmux on mount. There is no per-pane split direction (kitty
+  // has none outside `splits`). A new window reveals the layout (kitty un-zooms).
+  const insertWindow = (pid: string, kind: PaneKind) =>
+    setState((prev) => ({
+      ...prev,
+      paneKind: { ...prev.paneKind, [pid]: kind },
+      tabs: prev.tabs.map((t) => {
+        if (t.id !== prev.activeTabId) return t;
+        const i = t.panes.indexOf(t.focused);
+        const panes = [...t.panes];
+        panes.splice(i < 0 ? panes.length : i + 1, 0, pid);
+        return { ...t, panes, focused: pid, zoomed: false };
+      }),
+    }));
+
+  // new_window (⌘D): a normal RAW terminal — no tmux, gone when closed. Starts in
+  // the focused pane's folder (idea #18).
   const addWindow = async () => {
     const cwd = await sourceCwd();
     const pid = newId("p");
     if (cwd) spawnCwdRef.current[pid] = cwd;
-    updateActiveTab((t) => {
-      const i = t.panes.indexOf(t.focused);
-      const panes = [...t.panes];
-      panes.splice(i < 0 ? panes.length : i + 1, 0, pid);
-      // A new window reveals the layout again (kitty un-zooms on new_window).
-      return { ...t, panes, focused: pid, zoomed: false };
-    });
+    insertWindow(pid, "raw");
   };
 
-  // new_window but sandboxed (idea #5): the new pane's shell is write-confined
-  // to its project dir (the focused pane's cwd). Marked so the 🔒 badge shows.
+  // new_window but TMUX-backed (on demand): the pane is a persistent session that
+  // survives a window close and shows in the ⌘B sidebar.
+  const addTmuxWindow = async () => {
+    const cwd = await sourceCwd();
+    const pid = newId("p");
+    if (cwd) spawnCwdRef.current[pid] = cwd;
+    insertWindow(pid, "tmux");
+  };
+
+  // new_window but sandboxed (idea #5): the new pane's shell is write-confined to
+  // its project dir (the focused pane's cwd). Marked so the 🔒 badge shows. Raw
+  // like the default — sandbox-exec wraps the raw shell directly.
   const addSandboxedWindow = async () => {
     const cwd = await sourceCwd();
     const pid = newId("p");
     if (cwd) spawnCwdRef.current[pid] = cwd;
     setSandboxed((m) => ({ ...m, [pid]: true }));
-    updateActiveTab((t) => {
-      const i = t.panes.indexOf(t.focused);
-      const panes = [...t.panes];
-      panes.splice(i < 0 ? panes.length : i + 1, 0, pid);
-      return { ...t, panes, focused: pid, zoomed: false };
-    });
+    insertWindow(pid, "raw");
   };
 
   // A pane is "busy" when its foreground process isn't a bare login shell —
   // i.e. an agent (claude/node) or an editor is actually running in it. Used to
   // decide whether closing needs a confirmation (idea #13).
-  const SHELLS = new Set([
-    "zsh",
-    "-zsh",
-    "bash",
-    "-bash",
-    "sh",
-    "-sh",
-    "fish",
-    "-fish",
-    "login",
-    "tmux",
-  ]);
   const busyPanes = async (ids: string[]): Promise<string[]> => {
     const cmds = await Promise.all(
       ids.map(async (id) => {
@@ -672,7 +1047,7 @@ function App() {
         }
       }),
     );
-    return cmds.filter((c): c is string => !!c && !SHELLS.has(c));
+    return cmds.filter((c): c is string => !!c && !SHELL_CMDS.has(c));
   };
 
   // Actually destroy a tab: kill every pane's tmux session (deliberate close).
@@ -693,7 +1068,7 @@ function App() {
       if (remaining.length === 0) return { ...makeInitialState(), closed };
       const idx = prev.tabs.findIndex((x) => x.id === tabId);
       const next = remaining[Math.min(idx, remaining.length - 1)];
-      return { tabs: remaining, activeTabId: next.id, sessions, closed };
+      return { tabs: remaining, activeTabId: next.id, sessions, paneKind: prev.paneKind, paneCommand: prev.paneCommand, paneCwd: prev.paneCwd, closed };
     });
 
   // Close a tab WITHOUT killing: unmounting each Terminal calls pty_detach, so
@@ -715,6 +1090,9 @@ function App() {
         tabs: remaining,
         activeTabId: next.id,
         sessions: prev.sessions,
+        paneKind: prev.paneKind,
+        paneCommand: prev.paneCommand,
+        paneCwd: prev.paneCwd,
         closed,
       };
     });
@@ -751,12 +1129,17 @@ function App() {
       if (!paneId) return prev;
       const t = prev.tabs.find((x) => x.panes.includes(paneId));
       if (!t) return prev;
-      // Removing the pane unmounts its Terminal → pty_detach (not kill), so the
-      // session keeps running and a ⌘⇧T reopen reattaches it.
-      const closed = pushClosed(prev.closed, {
-        kind: "pane",
-        pane: { id: paneId, session: prev.sessions[paneId] },
-      });
+      // Removing the pane unmounts its Terminal. A RAW pane is killed (it's a
+      // normal, ephemeral terminal — closing ends it, nothing to reopen). A TMUX
+      // pane is detached (its session keeps running) and goes on the ⌘⇧T history
+      // so a reopen reattaches it.
+      const closed =
+        kindOf(prev, paneId) === "tmux"
+          ? pushClosed(prev.closed, {
+              kind: "pane",
+              pane: { id: paneId, session: prev.sessions[paneId], kind: "tmux" },
+            })
+          : prev.closed;
 
       const i = t.panes.indexOf(paneId);
       const panes = t.panes.filter((id) => id !== paneId);
@@ -782,6 +1165,9 @@ function App() {
         tabs: remaining,
         activeTabId: next.id,
         sessions: prev.sessions,
+        paneKind: prev.paneKind,
+        paneCommand: prev.paneCommand,
+        paneCwd: prev.paneCwd,
         closed,
       };
     });
@@ -798,7 +1184,12 @@ function App() {
         } catch {
           /* session may already be gone */
         }
-        return { id: pid, session: stateRef.current.sessions[pid], cwd };
+        return {
+          id: pid,
+          session: stateRef.current.sessions[pid],
+          cwd,
+          kind: kindOf(stateRef.current, pid),
+        };
       }),
     );
     return { kind: "tab", layout: t.layout, focused: t.focused, panes, title: t.title, color: t.color };
@@ -840,6 +1231,7 @@ function App() {
         const sessions = p.session
           ? { ...prev.sessions, [p.id]: p.session }
           : prev.sessions;
+        const paneKind = { ...prev.paneKind, [p.id]: p.kind ?? "tmux" };
         const tabs = prev.tabs.map((t) => {
           if (t.id !== prev.activeTabId) return t;
           const i = t.panes.indexOf(t.focused);
@@ -847,7 +1239,7 @@ function App() {
           panes.splice(i < 0 ? panes.length : i + 1, 0, p.id);
           return { ...t, panes, focused: p.id, zoomed: false };
         });
-        return { ...prev, closed, tabs, sessions };
+        return { ...prev, closed, tabs, sessions, paneKind };
       }
 
       // kind === "tab": recreate the tab. Skip any pane already mounted in
@@ -858,8 +1250,10 @@ function App() {
       if (fresh.length === 0) return { ...prev, closed };
       fresh.forEach(register);
       const sessions = { ...prev.sessions };
+      const paneKind = { ...prev.paneKind };
       fresh.forEach((p) => {
         if (p.session) sessions[p.id] = p.session;
+        paneKind[p.id] = p.kind ?? "tmux";
       });
       const tid = newId("t");
       const paneIds = fresh.map((p) => p.id);
@@ -868,6 +1262,7 @@ function App() {
         ...prev,
         closed,
         sessions,
+        paneKind,
         tabs: [
           ...prev.tabs,
           { id: tid, panes: paneIds, focused, layout: item.layout, title: item.title, color: item.color },
@@ -996,13 +1391,18 @@ function App() {
       return { ...t, panes, zoomed: false };
     });
 
-  // Drive the focused pane's scrollback through tmux copy-mode (kitty scroll_*
-  // actions). The backend `pty_scroll` maps each action to a copy-mode command;
-  // the scrollbar overlay (which polls) reflects the new position.
+  // Drive the focused pane's scrollback (kitty scroll_* actions). A RAW pane owns
+  // its scrollback in xterm, so we drive its native buffer directly; a TMUX pane
+  // goes through the backend `pty_scroll` copy-mode driver.
   const scrollPane = (action: string) => {
     const s = stateRef.current;
     const t = s.tabs.find((x) => x.id === s.activeTabId);
-    if (t) invoke("pty_scroll", { id: t.focused, action }).catch(() => {});
+    if (!t) return;
+    if (kindOf(s, t.focused) === "raw") {
+      scrollXterm(paneTerminals.get(t.focused), action);
+    } else {
+      invoke("pty_scroll", { id: t.focused, action }).catch(() => {});
+    }
   };
 
   const cycleTab = (delta: 1 | -1) =>
@@ -1027,12 +1427,58 @@ function App() {
       n.delete(paneId);
       return n;
     });
+    // The orange "te réclame" flag clears on the same engage as the glow (#6).
+    setNeed((prev) => {
+      if (!prev.has(paneId)) return prev;
+      const n = new Set(prev);
+      n.delete(paneId);
+      return n;
+    });
   };
 
   const setFocus = (paneId: string) => {
     updateActiveTab((t) => ({ ...t, focused: paneId }));
     clearActivity(paneId);
   };
+
+  // Redonne le focus clavier DOM au textarea xterm du pane actif — sauf si un de
+  // nos propres champs (overlay ouvert) le détient déjà. L'état React « actif »
+  // (bordure accent) et le vrai focus DOM peuvent DIVERGER : au retour sur la
+  // fenêtre, à la fermeture d'un overlay, ou après un clic sur le chrome, le
+  // focus quitte xterm sans changer l'état React → le pane PARAÎT actif mais ne
+  // reçoit plus rien (bug « les flèches ne marchent pas »). Ce helper le ramène
+  // sur xterm dès que l'utilisateur revient au terminal.
+  const focusActivePane = () => {
+    const ae = document.activeElement as HTMLElement | null;
+    if (
+      ae &&
+      (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA") &&
+      !ae.closest(".xterm")
+    )
+      return;
+    const s = stateRef.current;
+    const t = s.tabs.find((x) => x.id === s.activeTabId);
+    if (t) paneTerminals.get(t.focused)?.focus();
+  };
+  // Lu par des effets bound-once (window focus, mousedown) → toujours la dernière
+  // closure. Le helper ne lit que des refs/imports, donc c'est sans risque.
+  const focusActivePaneRef = useRef(focusActivePane);
+  focusActivePaneRef.current = focusActivePane;
+
+  // Un de nos overlays voleurs de focus est-il ouvert ? Sert à (a) refocaliser le
+  // terminal quand le dernier se ferme et (b) ne pas refocaliser sur un clic
+  // chrome tant qu'un overlay est ouvert.
+  const anyOverlayOpen =
+    paletteOpen ||
+    settingsOpen ||
+    filePicker !== null ||
+    commandBar !== null ||
+    scratchpadOpen ||
+    composerOpen ||
+    quakeOpen ||
+    sidebarOpen;
+  const anyOverlayOpenRef = useRef(anyOverlayOpen);
+  anyOverlayOpenRef.current = anyOverlayOpen;
 
   // The active pane (active tab + its focused pane) clears its glow as soon as
   // you're looking at it, whatever got you there — keyboard nav, tab switch, or
@@ -1045,10 +1491,133 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePane, state.activeTabId]);
 
+  // ---- mode d'affichage v2 (rail projet, idea #2 v2) ----
+  // Bascule classique ↔ v2 (persistée dans les réglages). N'affecte QUE le
+  // chrome : aucun pane n'est démonté (cf. la zone .main-col, toujours montée).
+  const toggleUiMode = () =>
+    setSettings((s) => ({ ...s, uiMode: s.uiMode === "v2" ? "classic" : "v2" }));
+
+  // Sélectionner un projet = activer l'onglet, le déplier, et revenir à sa grille.
+  const selectProject = (tabId: string) => {
+    setExpandedProjects((s) => (s.has(tabId) ? s : new Set(s).add(tabId)));
+    setState((prev) => ({
+      ...prev,
+      activeTabId: tabId,
+      tabs: prev.tabs.map((t) => (t.id === tabId ? { ...t, zoomed: false } : t)),
+    }));
+  };
+
+  // Plier/déplier la liste des fenêtres d'un projet (chevron) sans le sélectionner.
+  const toggleProjectExpanded = (tabId: string) =>
+    setExpandedProjects((s) => {
+      const n = new Set(s);
+      if (n.has(tabId)) n.delete(tabId);
+      else n.add(tabId);
+      return n;
+    });
+
+  // Drill : ouvrir une fenêtre du rail en grand (focus + zoom plein cadre). Le
+  // zoom réutilise le flag `zoomed` existant (la grille reste mémorisée).
+  const drillPane = (tabId: string, paneId: string) => {
+    clearActivity(paneId);
+    setState((prev) => ({
+      ...prev,
+      activeTabId: tabId,
+      tabs: prev.tabs.map((t) =>
+        t.id === tabId
+          ? { ...t, focused: paneId, zoomed: t.panes.length > 1 }
+          : t,
+      ),
+    }));
+  };
+
+  // Retour à la grille du projet (dézoom de l'onglet actif) — bouton du crumb.
+  const backToGrid = () =>
+    updateActiveTab((t) => (t.zoomed ? { ...t, zoomed: false } : t));
+
+  // Nouvelle fenêtre (raw) dans un projet donné depuis le rail (presets / +).
+  // Cible un onglet précis (pas forcément l'actif) ; hérite de son cwd (idea #18).
+  // `command` (optionnel) = preset d'agent à lancer dans la fenêtre (ex. "claude").
+  const newWindowInProject = async (tabId: string, command?: string) => {
+    const t = stateRef.current.tabs.find((x) => x.id === tabId);
+    let cwd: string | undefined;
+    if (t) {
+      try {
+        cwd = (await invoke<string | null>("pty_cwd", { id: t.focused })) ?? undefined;
+      } catch {
+        /* session peut être absente */
+      }
+    }
+    const pid = newId("p");
+    if (cwd) spawnCwdRef.current[pid] = cwd;
+    if (command) {
+      // First launch runs the command verbatim (a fresh conversation); the
+      // resume form (`--continue`) is derived only when REPLAYING at startup.
+      spawnCmdRef.current[pid] = command;
+      // Tag the pane with the agent it launches so the v2 mini rail draws the
+      // right brand mark.
+      setPaneAgent((m) => ({
+        ...m,
+        [pid]: agentIconForCommand(command, settingsRef.current.agentPresets),
+      }));
+    }
+    setState((prev) => {
+      // The project may have been closed during the cwd await — don't resurrect
+      // it (and don't strand the new pane id in a tab that no longer exists).
+      if (!prev.tabs.some((tab) => tab.id === tabId)) return prev;
+      return {
+        ...prev,
+        activeTabId: tabId,
+        paneKind: { ...prev.paneKind, [pid]: "raw" },
+        // Persist the raw launch command + cwd so a restart re-launches the agent
+        // (we store the verbatim command, never the `--continue` form).
+        paneCommand: command
+          ? { ...prev.paneCommand, [pid]: command }
+          : prev.paneCommand,
+        paneCwd: cwd ? { ...prev.paneCwd, [pid]: cwd } : prev.paneCwd,
+        tabs: prev.tabs.map((tab) => {
+          if (tab.id !== tabId) return tab;
+          const i = tab.panes.indexOf(tab.focused);
+          const panes = [...tab.panes];
+          panes.splice(i < 0 ? panes.length : i + 1, 0, pid);
+          return { ...tab, panes, focused: pid, zoomed: false };
+        }),
+      };
+    });
+  };
+
   // Open the file picker (⌘P) on the focused pane's working directory (idea #15).
   const openFilePicker = async () => {
     const cwd = (await sourceCwd()) ?? null;
     setFilePicker({ cwd });
+  };
+
+  // Open the command launcher (⌘L, idea #24) on the focused pane: capture its
+  // cwd (for cd/file suggestions) and foreground command (to warn when claude is
+  // up front, where `cd` wouldn't change the shell's directory).
+  const openCommandBar = async () => {
+    const s = stateRef.current;
+    const paneId = s.tabs.find((t) => t.id === s.activeTabId)?.focused;
+    const cwd = (await sourceCwd()) ?? null;
+    let foreground: string | null = null;
+    if (paneId) {
+      try {
+        foreground =
+          (await invoke<string | null>("pty_foreground", { id: paneId })) ??
+          null;
+      } catch {
+        /* leave null → no warning */
+      }
+    }
+    setCommandBar({ cwd, foreground });
+  };
+
+  // Run a command in the focused pane: plain text + Enter so it executes (unlike
+  // sendToPane's bracketed paste, which is for multi-line prompts to claude).
+  const runInPane = (text: string) => {
+    const s = stateRef.current;
+    const paneId = s.tabs.find((t) => t.id === s.activeTabId)?.focused;
+    if (paneId) invoke("pty_write", { id: paneId, data: text + "\r" });
   };
 
   // Insert a picked file path into the focused pane (bracketed paste).
@@ -1091,29 +1660,56 @@ function App() {
     getCurrentWindow().hide();
   };
 
-  // A pane rang its bell (Claude finished / awaits input). Badge it + fire a
-  // macOS notification, unless the user is already watching it (it's the active
-  // tab's focused pane and the window is focused). #6.
-  const handleBell = (paneId: string) => {
-    const s = stateRef.current;
-    const t = s.tabs.find((x) => x.id === s.activeTabId);
-    if (t?.focused === paneId && document.hasFocus()) return;
+  // A pane rang its bell. The payload's `kind` (set by the semantic Claude hook,
+  // idea #6) decides what happens — this is the whole fix for the false "agent
+  // terminé": only a real turn-end ("stop") or Claude blocked on you
+  // ("notification") fires an OS cue; an ambiguous native/sub-agent bell
+  // ("unknown" — or no payload) just lights the glow, never a notification/son.
+  const handleBell = (paneId: string, payload?: { kind?: string }) => {
+    const kind = payload?.kind ?? "unknown";
+    const needs = kind === "notification";
+    // 1) Surbrillance : TOUJOURS posée (idempotent), quel que soit le kind —
+    //    l'effet clear-on-watch (activePane) la retire aussitôt si le pane est
+    //    actif + fenêtre focus. Un `notification` ajoute en plus l'état orange.
     setActivity((prev) => {
       if (prev.has(paneId)) return prev;
       const n = new Set(prev);
       n.add(paneId);
       return n;
     });
+    if (needs) {
+      setNeed((prev) => {
+        if (prev.has(paneId)) return prev;
+        const n = new Set(prev);
+        n.add(paneId);
+        return n;
+      });
+    }
+    // 2) Pas de cue OS pour un bell ambigu (natif/sous-agent) : badge seul.
+    //    Décidé AVANT le debounce, sinon un `unknown` consommerait le créneau et
+    //    avalerait un vrai `stop` 100 ms plus tard.
+    if (kind !== "stop" && kind !== "notification") return;
+    // 3) Anti-rebond des cues OS (notif + son) : un seul jeu par pane / 500 ms.
+    if (bellDebounceRef.current.has(paneId)) return;
+    bellDebounceRef.current.add(paneId);
+    setTimeout(() => bellDebounceRef.current.delete(paneId), 500);
+    // 4) Cues OS supprimées seulement si on regarde déjà ce pane, fenêtre focus.
+    const s = stateRef.current;
+    const t = s.tabs.find((x) => x.id === s.activeTabId);
+    if (t?.focused === paneId && document.hasFocus()) return;
     // Audible cue (idea #6) — independent of the macOS notification toggle.
     if (settings.notifySound) {
       invoke("play_sound", { name: "Submarine" }).catch(() => {});
     }
     if (!settings.notify) return;
     const idx = s.tabs.findIndex((x) => x.panes.includes(paneId));
-    invoke("notify", {
+    const where = idx >= 0 ? `onglet ${idx + 1}` : "une fenêtre";
+    sendNotification({
       title: "superkitty",
-      body: `Un agent a terminé — ${idx >= 0 ? `onglet ${idx + 1}` : "une fenêtre"}`,
-    }).catch(() => {});
+      body: needs
+        ? `L'agent te réclame — ${where}`
+        : `L'agent a terminé — ${where}`,
+    });
   };
 
   // ---- session sidebar operations (idea #2) ----
@@ -1128,6 +1724,19 @@ function App() {
 
   const toggleSidebar = () => setSidebarOpen((o) => !o);
 
+  // v2 rail width: two modes only — full (the 280px panel) ↔ mini (slim, still
+  // navigable). No "hidden" — the rail always stays as a navigation anchor.
+  const setRailMode = (mode: SkSettings["railMode"]) =>
+    setSettings((s) => ({ ...s, railMode: mode }));
+  const cycleRail = () =>
+    setSettings((s) => ({ ...s, railMode: s.railMode === "full" ? "mini" : "full" }));
+
+  // ⌘B toggles the tmux session sidebar in v1, toggles the project rail in v2.
+  const toggleSidebarOrRail = () => {
+    if (settingsRef.current.uiMode === "v2") cycleRail();
+    else toggleSidebar();
+  };
+
   // ---- Zoom du texte (idée #23) : ⌘+/⌘-/⌘0 ----
   // Réutilise le réglage global `fontSize` (mêmes bornes que loadSettings/FontPane,
   // 8–32). setSettings déclenche la persistance + l'application live dans chaque pane.
@@ -1140,6 +1749,31 @@ function App() {
     }));
   const resetFont = () =>
     setSettings((s) => ({ ...s, fontSize: DEFAULT_SETTINGS.fontSize }));
+
+  // Settings changes from the panel. Most just persist; the agent-done hook
+  // toggle (idea #6, opt-in) additionally installs/uninstalls the guarded hook in
+  // ~/.claude/settings.json, and only flips the toggle if that write succeeds.
+  const onChangeSettings = (next: SkSettings) => {
+    if (next.reinforceAgentDone !== settings.reinforceAgentDone) {
+      // Choix explicite : marque-le pour que la migration ne le réécrase pas (#6).
+      const chosen = { ...next, reinforceAgentDoneUserSet: true };
+      const cmd = chosen.reinforceAgentDone
+        ? "install_claude_hooks"
+        : "uninstall_claude_hooks";
+      invoke(cmd)
+        .then(() => setSettings(chosen))
+        .catch((err) => {
+          console.error("hook agent-done:", err);
+          // L'écriture a échoué → ne pas mentir sur l'état du toggle.
+          setSettings({
+            ...chosen,
+            reinforceAgentDone: settings.reinforceAgentDone,
+          });
+        });
+      return;
+    }
+    setSettings(next);
+  };
 
   // Locate the pane (if any) currently driving a given tmux session name.
   const paneForSession = (
@@ -1189,13 +1823,19 @@ function App() {
       if (s.tabs.some((t) => t.panes.includes(pid))) return;
       const n = parseInt(pid.replace(/\D/g, ""), 10);
       if (!Number.isNaN(n)) _seq = Math.max(_seq, n);
-      setState((prev) => ({ ...prev, tabs: insertPaneIntoActive(prev, pid) }));
+      setState((prev) => ({
+        ...prev,
+        tabs: insertPaneIntoActive(prev, pid),
+        // An attached session is, by definition, tmux-backed.
+        paneKind: { ...prev.paneKind, [pid]: "tmux" },
+      }));
     } else {
       const pid = newId("p");
       setState((prev) => ({
         ...prev,
         tabs: insertPaneIntoActive(prev, pid),
         sessions: { ...prev.sessions, [pid]: name },
+        paneKind: { ...prev.paneKind, [pid]: "tmux" },
       }));
     }
   };
@@ -1230,6 +1870,9 @@ function App() {
         tabs: remaining,
         activeTabId: next.id,
         sessions,
+        paneKind: prev.paneKind,
+        paneCommand: prev.paneCommand,
+        paneCwd: prev.paneCwd,
         closed: prev.closed,
       };
     });
@@ -1281,6 +1924,7 @@ function App() {
       "next-tab": () => cycleTab(1),
       "prev-tab": () => cycleTab(-1),
       "new-window": addWindow,
+      "new-tmux-window": addTmuxWindow,
       "close-window": closeFocused,
       zoom: toggleZoom,
       promote: promoteToMain,
@@ -1305,7 +1949,7 @@ function App() {
       "scroll-bottom": () => scrollPane("bottom"),
       "scroll-prompt-prev": () => scrollPane("prompt-prev"),
       "scroll-prompt-next": () => scrollPane("prompt-next"),
-      sidebar: toggleSidebar,
+      sidebar: toggleSidebarOrRail,
       composer: () => setComposerOpen((o) => !o),
       scratchpad: () => setScratchpadOpen((o) => !o),
     };
@@ -1357,6 +2001,15 @@ function App() {
       }
       if (filePickerOpenRef.current) return;
 
+      // Command launcher (⌘L) toggles: re-pressing the chord closes it.
+      if (id === "command-bar") {
+        return done(e, () => {
+          if (commandBarOpenRef.current) setCommandBar(null);
+          else openCommandBar();
+        });
+      }
+      if (commandBarOpenRef.current) return;
+
       // When focus is in one of our own text fields (composer, scratchpad, Quake)
       // — anything but the terminal's hidden textarea — let it handle its keys.
       // Placed AFTER the toggles above so those still close their own overlay
@@ -1368,6 +2021,21 @@ function App() {
         !ae.closest(".xterm")
       ) {
         return;
+      }
+
+      // v2: Esc returns a zoomed/drilled window to the project grid — but ONLY
+      // when the terminal isn't focused, so a zoomed pane's claude/vim still
+      // receives its Esc (interrupt). When you're typing in the terminal, use the
+      // ← « grille du projet » button or ⌃⇧Z to exit. This deliberately does NOT
+      // shadow terminal Esc — the project's #1 rule is never breaking the terminal.
+      if (
+        e.key === "Escape" &&
+        settingsRef.current.uiMode === "v2" &&
+        !ae?.closest(".xterm")
+      ) {
+        const s = stateRef.current;
+        const t = s.tabs.find((x) => x.id === s.activeTabId);
+        if (t?.zoomed) return done(e, backToGrid);
       }
 
       // Text zoom (idea #23) is matched by CHARACTER (e.key), not physical key
@@ -1395,6 +2063,14 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown, true);
     // Bound once; handlers only call the stable setState / read the DOM.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ask for macOS notification permission once at launch so the agent-done
+  // notification (idea #6) can actually show. Best-effort.
+  useEffect(() => {
+    (async () => {
+      if (!(await isPermissionGranted())) await requestPermission();
+    })().catch(() => {});
   }, []);
 
   // ---- file drag & drop → inject the path into the dropped-on pane ----
@@ -1548,15 +2224,36 @@ function App() {
   useEffect(() => {
     const redrawAll = () => {
       for (const t of stateRef.current.tabs)
-        for (const pid of t.panes)
+        for (const pid of t.panes) {
+          // pty_redraw repaints server-side (tmux refresh-client) or pokes a raw
+          // pane's TUI (SIGWINCH). Also force xterm to repaint its own buffer:
+          // covers a raw pane whose bytes arrived but weren't drawn (rAF throttled
+          // while hidden), so a Cmd-Tab away-and-back finally un-blacks raw panes.
           invoke("pty_redraw", { id: pid }).catch(() => {});
+          const term = paneTerminals.get(pid);
+          if (term) {
+            try {
+              term.refresh(0, term.rows - 1);
+            } catch {
+              /* terminal disposed */
+            }
+          }
+        }
     };
     let un: (() => void) | undefined;
     let unShown: (() => void) | undefined;
     let disposed = false;
     getCurrentWindow()
       .onFocusChanged(({ payload: focused }) => {
-        if (focused) redrawAll();
+        if (focused) {
+          redrawAll();
+          // Restitue aussi le focus clavier au pane actif : au retour sur la
+          // fenêtre (Cmd-Tab / clic sur la notification « agent terminé »),
+          // WKWebView pose souvent le focus sur <body>, pas sur le textarea
+          // xterm → les frappes (flèches d'un menu claude) n'arrivent plus. rAF
+          // pour passer APRÈS que WebKit ait posé son propre focus.
+          requestAnimationFrame(() => focusActivePaneRef.current());
+        }
       })
       .then((f) => (disposed ? f() : (un = f)));
     listen("quake://shown", redrawAll).then((f) =>
@@ -1569,9 +2266,48 @@ function App() {
     };
   }, []);
 
+  // Quand le dernier overlay (palette/réglages/file-picker/composer/scratchpad/
+  // quake/sidebar) se ferme, son input avait le focus et le rend à <body> : on le
+  // redonne au terminal actif pour que les frappes y retournent sans reclic. Au
+  // montage il se déclenche une fois (anyOverlayOpen=false) → focalise le pane
+  // actif au lancement, ce qui est souhaitable.
+  useEffect(() => {
+    if (!anyOverlayOpen)
+      requestAnimationFrame(() => focusActivePaneRef.current());
+  }, [anyOverlayOpen]);
+
+  // Un clic sur le chrome inerte (barre de titre, status bar, fond de sidebar)
+  // sort le focus de xterm sans changer l'état React → frappes perdues. On le
+  // redonne au pane actif, SAUF si le clic vise un pane (déjà géré par son
+  // onMouseDown={onFocus}), un contrôle interactif, ou tant qu'un overlay est
+  // ouvert. Le drag natif (data-tauri-drag-region) reste géré sur le mousedown ;
+  // le refocus en rAF ne le gêne pas.
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (anyOverlayOpenRef.current) return;
+      const tgt = e.target as HTMLElement | null;
+      if (!tgt) return;
+      if (tgt.closest(".terminal-pane")) return;
+      if (
+        tgt.closest(
+          "input, textarea, button, a, select, [contenteditable], [role='button']",
+        )
+      )
+        return;
+      requestAnimationFrame(() => focusActivePaneRef.current());
+    };
+    window.addEventListener("mousedown", onDown, true);
+    return () => window.removeEventListener("mousedown", onDown, true);
+  }, []);
+
   const activeTab =
     state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
-  const termTheme = themeOf(settings);
+  // Mode d'affichage (idea #2 v2). In v2 the terminal itself switches to the warm
+  // « Platinum Noir » palette so it matches the chrome; v1 keeps the user's theme.
+  // Applied live via TerminalView's theme prop (no remount).
+  const v2 = settings.uiMode === "v2";
+  const railMode = settings.railMode;
+  const termTheme = v2 ? PLATINUM_NOIR_THEME : themeOf(settings);
 
   // The "agent finished" glow (idea #6) is cleared by engaging the pane —
   // clicking/focusing it (setFocus) or typing into it (onInteract). Bringing
@@ -1607,6 +2343,72 @@ function App() {
     setRenamingTabId(null);
   };
 
+  // ---- v2 rail projection (idea #2 v2) ----
+  // Clean a terminal title for display as a name: trim, reduce a path to its
+  // basename, drop version-only junk like "2.1.195" (what Claude briefly sets at
+  // startup before it settles on a real title / your `/rename`).
+  const cleanTitle = (raw: string | undefined): string | null => {
+    if (!raw) return null;
+    let t = raw.trim();
+    if (t.includes("/")) t = basename(t);
+    if (!t || /^v?[\d.\s]+$/.test(t)) return null;
+    return t;
+  };
+  // Rail status: une seule pastille par session.
+  //   · Claude bloqué en attente de toi → "need" (orange)     « te réclame »
+  //   · output flowing right now        → "busy" (spinner)    « en cours »
+  //   · otherwise                       → "idle" (creux)      « au repos »
+  // "need" est enfin un VRAI signal : le hook `Notification` de Claude (idea #6)
+  // — l'orange était jusqu'ici réservé faute de pouvoir le détecter. Il prime sur
+  // busy (un agent qui te réclame ne produit plus de sortie). "busy" reste piloté
+  // par la sortie PTY réelle (lastOutputRef), donc claude au repos à son prompt
+  // n'est pas "busy". `need` se vide dès que tu engages le pane (clearActivity).
+  const paneStatus = (pid: string): SessionStatus =>
+    need.has(pid) ? "need" : outputBusy.has(pid) ? "busy" : "idle";
+  // Session label = Claude's window title (it sets it; `/rename` updates it),
+  // falling back to a generic "Terminal".
+  const sessionTitle = (pid: string): string =>
+    cleanTitle(paneTitle[pid]) ?? "Terminal";
+  // Project display name: manual title > focused pane's terminal title > folder
+  // (all run through cleanTitle, so a version-like value never shows).
+  const projectName = (t: Tab, i: number): string =>
+    t.title ??
+    cleanTitle(paneTitle[t.focused]) ??
+    cleanTitle(tabCwd[t.id]) ??
+    `Projet ${i + 1}`;
+  // Projects (rail) = the tabs; sessions = their panes. A pure projection of the
+  // already-mounted state — no new sessions are created. Cheap, rebuilt each
+  // render so status/labels stay live.
+  const railProjects: RailProject[] = state.tabs.map((t, i) => ({
+    id: t.id,
+    name: projectName(t, i),
+    tint: tabTint(t),
+    active: t.id === state.activeTabId,
+    expanded: expandedProjects.has(t.id),
+    sessions: t.panes.map((pid) => ({
+      id: pid,
+      title: sessionTitle(pid),
+      status: paneStatus(pid),
+      agent: paneAgent[pid] ?? "generic",
+      selected: t.id === state.activeTabId && t.focused === pid,
+    })),
+  }));
+
+  // Centre de notifications (cloche, idea #6 v2) : toutes les conversations qui
+  // t'attendent (la cloche a sonné, pas encore regardées — le set `activity`),
+  // tous projets confondus. Cliquer un item → drillPane (va droit à la conv).
+  const needItems: NotifItem[] = state.tabs.flatMap((t, i) =>
+    t.panes
+      .filter((p) => activity.has(p))
+      .map((p) => ({
+        paneId: p,
+        tabId: t.id,
+        project: projectName(t, i),
+        title: sessionTitle(p),
+        tint: tabTint(t),
+      })),
+  );
+
   // Flat list of every action for the command palette (idea #12). Rebuilt each
   // render (cheap) so tmux sessions and layouts stay current; only consumed
   // while the palette is open.
@@ -1623,7 +2425,8 @@ function App() {
       hint: i < 9 ? `⌘${i + 1}` : undefined,
       run: () => gotoTab(i),
     })),
-    { id: "new-window", group: "Fenêtre", title: "Nouvelle fenêtre (pane)", hint: "⌘D", run: addWindow },
+    { id: "new-window", group: "Fenêtre", title: "Nouvelle fenêtre (normale)", keywords: "raw terminal pane normale éphémère", hint: "⌘D", run: addWindow },
+    { id: "new-tmux-window", group: "Fenêtre", title: "Nouvelle fenêtre tmux (persistante)", keywords: "tmux persistante session résumable garder survit", hint: "⌥⌘D", run: addTmuxWindow },
     { id: "close-window", group: "Fenêtre", title: "Fermer la fenêtre", hint: "⌃⇧W", run: closeFocused },
     { id: "zoom", group: "Fenêtre", title: "Agrandir / réduire (zoom)", keywords: "maximize plein écran stack", hint: "⌃⇧Z", run: toggleZoom },
     { id: "promote", group: "Fenêtre", title: "Promouvoir en fenêtre principale", keywords: "main top", hint: "⌃⇧`", run: promoteToMain },
@@ -1639,9 +2442,11 @@ function App() {
     { id: "zoom-in", group: "Affichage", title: "Agrandir le texte", keywords: "zoom police taille font agrandir", hint: "⌘+", run: () => zoomFont(1) },
     { id: "zoom-out", group: "Affichage", title: "Réduire le texte", keywords: "zoom police taille font réduire", hint: "⌘-", run: () => zoomFont(-1) },
     { id: "zoom-reset", group: "Affichage", title: "Taille du texte par défaut", keywords: "zoom police taille font reset défaut", hint: "⌘0", run: resetFont },
-    { id: "sidebar", group: "Sessions", title: "Afficher / masquer les sessions tmux", hint: "⌘B", run: toggleSidebar },
+    { id: "sidebar", group: "Sessions", title: v2 ? "Rail projet : complet / réduit" : "Afficher / masquer les sessions tmux", keywords: "rail réduire mini complet sidebar sessions navigation", hint: "⌘B", run: toggleSidebarOrRail },
     { id: "settings", group: "Général", title: "Réglages (thème, police…)", hint: "⌘,", run: () => setSettingsOpen(true) },
+    { id: "toggle-ui", group: "Général", title: v2 ? "Affichage : repasser en classique" : "Affichage : basculer en v2 (rail projet)", keywords: "mode affichage rail platinum noir v2 classique vue bascule", run: toggleUiMode },
     { id: "file-picker", group: "Fichier", title: "Insérer un chemin de fichier…", keywords: "@ mention path fichier", hint: "⌘P", run: () => openFilePicker() },
+    { id: "command-bar", group: "Général", title: "Lanceur de commande (suggestions)…", keywords: "warp cd commande suggestion historique lanceur run", hint: "⌘L", run: () => openCommandBar() },
     { id: "scratchpad", group: "Général", title: "Bloc-notes de l'onglet", keywords: "notes todo scratchpad", hint: "⌃⇧N", run: () => setScratchpadOpen(true) },
     { id: "composer", group: "Général", title: "Composer un prompt (multi-lignes)", keywords: "prompt composer editor envoyer", hint: "⌘E", run: () => setComposerOpen(true) },
     { id: "scroll-top", group: "Défilement", title: "Aller en haut du scrollback", hint: "⌃⇧Home", run: () => scrollPane("top") },
@@ -1665,6 +2470,7 @@ function App() {
   // focuses it first, so these act on the intended target.
   const contextCommands: Command[] = [
     { id: "m-new-window", title: "Nouvelle fenêtre", hint: "⌘D", run: addWindow },
+    { id: "m-tmux-window", title: "Nouvelle fenêtre tmux (persistante)", hint: "⌥⌘D", run: addTmuxWindow },
     { id: "m-sandbox", title: "Nouvelle fenêtre sandboxée", run: () => addSandboxedWindow() },
     { id: "m-new-tab", title: "Nouvel onglet", hint: "⌘T", run: newTab },
     { id: "m-zoom", title: "Agrandir / réduire", hint: "⌃⇧Z", run: toggleZoom },
@@ -1685,7 +2491,45 @@ function App() {
   ];
 
   return (
-    <div className="app">
+    <div className={`app${v2 ? " ui-v2" : ""}`}>
+      {v2 ? (
+        <div className="v2-topbar">
+          <NotificationCenter items={needItems} onOpenItem={drillPane} />
+          <div className="v2-drag" data-tauri-drag-region />
+          <button
+            className="v2-wordmark"
+            onClick={() => {
+              refreshSessions();
+              setPaletteOpen(true);
+            }}
+            title="superkitty — toutes les commandes (⌘K)"
+          >
+            superkitty
+          </button>
+          {activeTab && (
+            <LayoutPicker
+              current={activeTab.layout}
+              paneCount={activeTab.panes.length}
+              focusedIndex={Math.max(0, activeTab.panes.indexOf(activeTab.focused))}
+              onPick={setLayout}
+            />
+          )}
+          <button
+            className="icon-btn"
+            onClick={() => setSettingsOpen(true)}
+            title="Réglages (⌘,)"
+          >
+            ⚙
+          </button>
+          <button
+            className="v2-mode-toggle"
+            onClick={toggleUiMode}
+            title="Repasser à l'affichage classique"
+          >
+            Vue classique
+          </button>
+        </div>
+      ) : (
       <div className="titlebar">
         <div className="tabs">
           {state.tabs.map((t, i) => {
@@ -1763,6 +2607,13 @@ function App() {
             />
           )}
           <button
+            className="tab v2-toggle-pill"
+            onClick={toggleUiMode}
+            title="Basculer vers l'affichage v2 (rail projet, « Platinum Noir »)"
+          >
+            ✦ v2
+          </button>
+          <button
             className={`tab${settingsOpen ? " active" : ""}`}
             onClick={() => setSettingsOpen(true)}
             title="Réglages (⌘,)"
@@ -1788,7 +2639,24 @@ function App() {
           </button>
         </div>
       </div>
+      )}
       <div className="body">
+        {v2 && (
+          <ProjectRail
+            projects={railProjects}
+            presets={settings.agentPresets}
+            collapsed={railMode === "mini"}
+            onSelectProject={selectProject}
+            onOpenSession={drillPane}
+            onToggleExpand={toggleProjectExpanded}
+            onNewProject={newTab}
+            onNewWindow={(tabId) => newWindowInProject(tabId)}
+            onLaunch={(tabId, command) => newWindowInProject(tabId, command)}
+            onSettings={() => setSettingsOpen(true)}
+            onCollapse={() => setRailMode("mini")}
+            onExpand={() => setRailMode("full")}
+          />
+        )}
         <Scratchpad
           open={scratchpadOpen}
           value={notes[state.activeTabId] ?? ""}
@@ -1798,6 +2666,22 @@ function App() {
           onSend={() => sendToPane(notes[state.activeTabId] ?? "")}
           onClose={() => setScratchpadOpen(false)}
         />
+        <div className="main-col">
+          {v2 && activeTab && (
+            <V2Crumb
+              projectName={projectName(
+                activeTab,
+                Math.max(0, state.tabs.indexOf(activeTab)),
+              )}
+              tint={tabTint(activeTab)}
+              leaf={
+                activeTab.zoomed
+                  ? `${sessionTitle(activeTab.focused)} · ${activeTab.focused}`
+                  : null
+              }
+              onBackToGrid={backToGrid}
+            />
+          )}
       <div
         className="workspace"
         onContextMenu={(e) => {
@@ -1853,11 +2737,29 @@ function App() {
                       id={id}
                       active={t.id === state.activeTabId && id === t.focused}
                       onFocus={() => setFocus(id)}
-                      onBell={() => handleBell(id)}
-                      onInteract={() => clearActivity(id)}
+                      onBell={(p) => handleBell(id, p)}
+                      onInteract={() => {
+                        lastInputRef.current.set(id, Date.now());
+                        clearActivity(id);
+                      }}
+                      onTitle={(title) =>
+                        setPaneTitle((m) =>
+                          m[id] === title ? m : { ...m, [id]: title },
+                        )
+                      }
+                      onActivity={() => {
+                        const now = Date.now();
+                        // Sortie juste après une frappe = echo de la saisie
+                        // (claude redessine son prompt), pas du travail → ignore.
+                        if (now - (lastInputRef.current.get(id) ?? 0) < INPUT_ECHO_MS)
+                          return;
+                        lastOutputRef.current.set(id, now);
+                      }}
+                      initialCommand={spawnCmdRef.current[id]}
                       cwd={spawnCwdRef.current[id]}
                       session={state.sessions[id]}
                       sandbox={!!sandboxed[id]}
+                      kind={kindOf(state, id)}
                       theme={termTheme}
                       fontFamily={settings.fontFamily}
                       fontSize={settings.fontSize}
@@ -1905,6 +2807,8 @@ function App() {
           );
         })}
       </div>
+        </div>
+        {!v2 && (
         <SessionSidebar
           open={sidebarOpen}
           sessions={tmuxSessions}
@@ -1920,6 +2824,7 @@ function App() {
           onRefresh={refreshSessions}
           onClose={() => setSidebarOpen(false)}
         />
+        )}
       </div>
 
       <StatusBar
@@ -1928,6 +2833,12 @@ function App() {
           refreshSessions();
           setPaletteOpen(true);
         }}
+        hints={hints}
+        onDismissHints={() =>
+          setSettings((s) => ({ ...s, hintsEnabled: false }))
+        }
+        cwd={activeTab ? tabCwd[activeTab.id] ?? null : null}
+        context={paneContext}
       />
 
       {paletteOpen && (
@@ -1960,7 +2871,7 @@ function App() {
       {settingsOpen && (
         <Settings
           settings={settings}
-          onChange={setSettings}
+          onChange={onChangeSettings}
           bindings={bindings}
           onChangeBindings={setBindings}
           onClose={() => setSettingsOpen(false)}
@@ -1972,6 +2883,15 @@ function App() {
           cwd={filePicker.cwd}
           onPick={insertPath}
           onClose={() => setFilePicker(null)}
+        />
+      )}
+
+      {commandBar && (
+        <CommandBar
+          cwd={commandBar.cwd}
+          foreground={commandBar.foreground}
+          onRun={runInPane}
+          onClose={() => setCommandBar(null)}
         />
       )}
 

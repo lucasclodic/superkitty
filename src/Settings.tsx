@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { FONT_CHOICES, SkSettings, THEMES } from "./themes";
+import { AgentPreset, FONT_CHOICES, SkSettings, THEMES } from "./themes";
+import { AgentIcon } from "./ProjectRail";
 import {
   ACTIONS,
   Bindings,
@@ -14,6 +15,7 @@ import {
 type Category =
   | "apparence"
   | "police"
+  | "agents"
   | "notifications"
   | "raccourcis"
   | "apropos";
@@ -21,6 +23,7 @@ type Category =
 const CATEGORIES: { id: Category; label: string; icon: string }[] = [
   { id: "apparence", label: "Apparence", icon: "🎨" },
   { id: "police", label: "Police", icon: "🔤" },
+  { id: "agents", label: "Agents", icon: "✦" },
   { id: "notifications", label: "Notifications", icon: "🔔" },
   { id: "raccourcis", label: "Raccourcis", icon: "⌨️" },
   { id: "apropos", label: "À propos", icon: "ℹ️" },
@@ -94,6 +97,9 @@ export function Settings({
             {category === "police" && (
               <FontPane settings={settings} onChange={onChange} />
             )}
+            {category === "agents" && (
+              <AgentsPane settings={settings} onChange={onChange} />
+            )}
             {category === "notifications" && (
               <NotificationsPane settings={settings} onChange={onChange} />
             )}
@@ -101,6 +107,8 @@ export function Settings({
               <ShortcutsPane
                 bindings={bindings}
                 onChangeBindings={onChangeBindings}
+                settings={settings}
+                onChange={onChange}
               />
             )}
             {category === "apropos" && <AboutPane />}
@@ -120,7 +128,29 @@ function AppearancePane({
 }) {
   return (
     <section className="settings-section">
-      <h3 className="settings-h3">Thème</h3>
+      <h3 className="settings-h3">Mode d'affichage</h3>
+      <div className="ui-mode-grid">
+        <button
+          className={`ui-mode-card${settings.uiMode !== "v2" ? " active" : ""}`}
+          onClick={() => onChange({ ...settings, uiMode: "classic" })}
+        >
+          <span className="ui-mode-name">Classique</span>
+          <span className="ui-mode-desc">Onglets + grille kitty (violet)</span>
+        </button>
+        <button
+          className={`ui-mode-card${settings.uiMode === "v2" ? " active" : ""}`}
+          onClick={() => onChange({ ...settings, uiMode: "v2" })}
+        >
+          <span className="ui-mode-name">v2 — rail projet</span>
+          <span className="ui-mode-desc">
+            « Platinum Noir » + fenêtrage kitty
+          </span>
+        </button>
+      </div>
+
+      <h3 className="settings-h3" style={{ marginTop: 18 }}>
+        Thème
+      </h3>
       <div className="theme-grid">
         {Object.entries(THEMES).map(([key, t]) => (
           <button
@@ -206,6 +236,54 @@ function FontPane({
   );
 }
 
+function AgentsPane({
+  settings,
+  onChange,
+}: {
+  settings: SkSettings;
+  onChange: (s: SkSettings) => void;
+}) {
+  const update = (i: number, patch: Partial<AgentPreset>) =>
+    onChange({
+      ...settings,
+      agentPresets: settings.agentPresets.map((p, j) =>
+        j === i ? { ...p, ...patch } : p,
+      ),
+    });
+  return (
+    <section className="settings-section">
+      <h3 className="settings-h3">Agents (rail v2)</h3>
+      <p className="settings-hint" style={{ marginTop: 0, marginBottom: 14 }}>
+        Les logos au survol d'un projet (mode v2). Un clic ouvre une nouvelle
+        fenêtre et y lance la commande. Personnalise-la — ex.{" "}
+        <code>claude --dangerously-skip-permissions</code> pour Claude sans
+        confirmation de permissions.
+      </p>
+      {settings.agentPresets.map((p, i) => (
+        <div key={p.id} className="agent-row">
+          <span className="agent-icon">
+            <AgentIcon icon={p.icon} />
+          </span>
+          <input
+            className="agent-label"
+            value={p.label}
+            aria-label="Nom"
+            onChange={(e) => update(i, { label: e.target.value })}
+          />
+          <input
+            className="agent-cmd"
+            value={p.command}
+            aria-label="Commande"
+            placeholder="commande shell"
+            spellCheck={false}
+            onChange={(e) => update(i, { command: e.target.value })}
+          />
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function NotificationsPane({
   settings,
   onChange,
@@ -240,6 +318,28 @@ function NotificationsPane({
         Le pane concerné s'entoure d'une traînée lumineuse jusqu'à ce que tu
         cliques dedans.
       </p>
+      <h3 className="settings-h3" style={{ marginTop: 18 }}>
+        Fiabilité
+      </h3>
+      <label className="settings-toggle">
+        <input
+          type="checkbox"
+          checked={settings.reinforceAgentDone}
+          onChange={(e) =>
+            onChange({ ...settings, reinforceAgentDone: e.target.checked })
+          }
+        />
+        <span>Notifications fiables (recommandé)</span>
+      </label>
+      <p className="settings-hint">
+        Installe des hooks <code>Stop</code>/<code>Notification</code>{" "}
+        sémantiques dans <code>~/.claude/settings.json</code> : tu n'es notifié·e
+        que quand l'agent a <strong>vraiment terminé</strong> son tour ou qu'il{" "}
+        <strong>te réclame</strong> (autorisation / saisie), jamais sur une cloche
+        intermédiaire ou un sous-agent. Activé par défaut ; sans effet hors
+        superkitty. Décoche pour retirer les hooks (les notifs deviennent alors
+        peu fiables).
+      </p>
     </section>
   );
 }
@@ -247,9 +347,13 @@ function NotificationsPane({
 function ShortcutsPane({
   bindings,
   onChangeBindings,
+  settings,
+  onChange,
 }: {
   bindings: Bindings;
   onChangeBindings: (b: Bindings) => void;
+  settings: SkSettings;
+  onChange: (s: SkSettings) => void;
 }) {
   const [query, setQuery] = useState("");
   // The action currently waiting for a keypress, or null.
@@ -329,6 +433,17 @@ function ShortcutsPane({
 
   return (
     <section className="settings-section">
+      <label className="settings-toggle" style={{ marginBottom: 14 }}>
+        <input
+          type="checkbox"
+          checked={settings.hintsEnabled}
+          onChange={(e) =>
+            onChange({ ...settings, hintsEnabled: e.target.checked })
+          }
+        />
+        <span>Afficher des astuces de raccourcis en bas de la fenêtre</span>
+      </label>
+
       <div className="settings-row" style={{ marginBottom: 14 }}>
         <input
           className="key-search"
