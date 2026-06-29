@@ -27,8 +27,29 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
 - **#16 Composeur multi-lignes** (`⌘E`, `⌘↵` envoie, paste image inline).
 - **#19 Mode Quake** (hotkey global `` ⌃` ``, dropdown choix-projet + prompt).
 - **#5 Sandbox par pane** (Seatbelt write-confinement, badge 🔒).
+- **Mode d'affichage « v2 » — rail projet « Platinum Noir »** (bascule `✦ v2` / palette `⌘K` / Réglages → Apparence, persisté `uiMode`). Re-skin + re-disposition **par-dessus le même moteur** : projet = onglet, session = pane ; rail à gauche, topbar fine, fil d'Ariane `projet › fenêtre`, drill = zoom existant, fenêtrage kitty entier, statut harmonisé (orange = te réclame uniquement, jamais de cloche → la cloche pilote « terminé » vert fixe). Aucun pane démonté au switch (chaîne `.app > .body > .main-col > .workspace` à index stable). Scopé `.app.ui-v2`, la v1 ne bouge pas. Relié à **#2** (sidebar → rail projet), **#17** (teintes projet réutilisées), **#5/worktrees** (nœud différé). Voir `handoff/2026-06-27-mode-affichage-v2-rail-projet.md` (statut ✅).
+  - [x] **Rail réduit (mini).** Le rail a 3 largeurs cyclées par le bouton ⊟ de la topbar et `⌘B` : **complet** (280px) → **réduit** (barre fine ~52px) → **masqué**, persisté (`settings.railMode`, défaut `full`). Le mini-rail garde la navigation : pastilles de teinte des projets (clic → projet, infobulle `⌘1-9`), pastilles de statut des fenêtres du projet actif (clic → drill/zoom), témoin d'activité sur les projets non-actifs. Boutons ‹ (réduire) dans le rail complet, › (déplier) dans le mini.
 
-À affiner plus tard : confinement *lecture* du sandbox, vraie fenêtre Quake redimensionnée descendant du haut, picker `@` déclenché à la frappe, resizers draggables, sortie compressée (#8).
+À affiner plus tard : confinement *lecture* du sandbox, vraie fenêtre Quake redimensionnée descendant du haut, picker `@` déclenché à la frappe, resizers draggables, sortie compressée (#8). **v2 :** brancher le nœud Worktrees (idée #5), l'horodatage par session, les épingles (les presets d'agent sont branchés — clic sur un logo = nouvelle fenêtre + agent lancé directement au spawn, vrais logos en blanc).
+
+---
+
+## 0. Sessions : terminaux **normaux par défaut**, tmux **à la demande** (pivot 2026-06)
+
+> Avant : *chaque* pane était une session tmux. Conséquence : fuite massive — `pty_detach` (le close normal) garde tmux vivant et rien ne nettoie, donc des dizaines de sessions mortes s'accumulaient (constaté : 59 vivantes, 2 attachées). Le but n'est pas d'avoir des sessions tmux partout, c'est de pouvoir en ouvrir une facilement.
+
+- [x] **`PaneKind` (`raw` | `tmux`) par pane**, choisi à la création, stocké dans `AppState.paneKind` (persisté dans le blob layout ; pane restauré sans entrée → migré `tmux`). Backend : `pty_spawn` prend `kind`, `PtyInstance` stocke `kind` + `child_pid`.
+- [x] **`raw` = défaut (⌘D)** : PTY qui lance `$SHELL -l` directement (sandbox-exec optionnel), `$SUPERKITTY`/`TERM` via `cmd.env`. Fermer = `SIGHUP` du shell (`raw_hangup`) → éphémère, **zéro accumulation**. N'entre pas dans l'historique `⌘⇧T`, n'apparaît pas dans la sidebar.
+- [x] **`tmux` = à la demande** : commande « Nouvelle fenêtre tmux (persistante) » (`⌥⌘D` + palette + clic droit). Garde toute la persistance (survit à la fermeture, sidebar, réattach).
+- [x] **Réimplémenté pour les panes raw** (ce que tmux donnait gratis) : scroll via scrollback xterm natif (`scrollback: 50000`, touches kitty → `term.scroll*`), cwd via `tcgetpgrp`+libproc (`proc_pidinfo`), foreground via `proc_pidpath` (claude = `node` → garde-fou #13 OK). Bell (détection `0x07`) et sandbox marchaient déjà en brut.
+- [x] **Nettoyage manuel** des 59 résiduelles → tué 23 shells `zsh` idle détachés, gardé les `claude`/attachées (38 restantes).
+- [ ] **Phase D — GC tmux** (confort, plus urgent vu que raw stoppe l'accumulation) : commande **« Nettoyer les sessions »** + `tmux_prune` (allowlist sûre : jamais attachée, jamais non-shell type `claude`/`node`, jamais hors-`superkitty-`) + prune au lancement.
+- [x] **Relancer l'agent d'un pane raw au redémarrage.** Un pane raw lancé via un preset d'agent du rail v2 (`claude`/`codex`/…) ne repartait qu'en shell nu après un relancement de l'app (la commande vivait dans `spawnCmdRef`/`paneAgent`, non persistés). Désormais `AppState.paneCommand` + `AppState.paneCwd` persistent la commande **brute** + le cwd de lancement par pane raw ; au démarrage on re-sème `spawnCmdRef`/`spawnCwdRef`/`paneAgent` depuis ces champs. Un pane Claude est rejoué en **`claude --continue`** (reprend la dernière conversation **du dossier**) — la transformation « resume » (`RESUME_FLAG`, extensible) est dérivée au re-semis, jamais stockée ; les autres agents rejoués tels quels. Le cwd de lancement = cwd au moment de quitter (claude ne déplace pas le cwd du shell), donc capturer au lancement suffit. Limite assumée : le scrollback brut n'est pas conservé octet pour octet (propre au *raw* — `--continue` redessine la conversation ; pour du byte-for-byte → pane tmux).
+- [x] **Pane raw « noir » au redémarrage** (conséquence directe du point ci-dessus). Un pane-agent raw rejoué pouvait revenir **complètement noir** : `pty_redraw` était un no-op pour raw et `tryAttachRedraw` était sauté pour raw → **aucun mécanisme de repaint** quand la première frame de `claude` était perdue/partielle (dessin avant taille finale du slot, `fit()` sur conteneur 0px, rAF throttlé au montage) ; même le secours Cmd-Tab (`redrawAll`) ne faisait rien. Fix : (1) `pty_redraw` raw envoie `SIGWINCH` au process group de premier plan (`raw_repaint`/`raw_fg_pid`/`killpg`, l'équivalent non-tmux de `refresh-client` — claude/Ink/vim repeignent sans reflow) ; (2) `Terminal.tsx` lance `scheduleRawRepaints` (`[200,700,1600,3200]ms`, chaque passe `fit()` + `term.refresh()` + `pty_redraw`) ; (3) `redrawAll` repeint aussi via `paneTerminals.refresh()` au retour au premier plan. Voir CLAUDE.md « Black / frozen pane » (variante raw).
+- [x] **Phase D — persister le cwd d'un pane raw** (couvert ci-dessus pour les panes d'agent via `AppState.paneCwd`). Reste à étendre aux panes raw ⌘D simples (sans commande) si on veut qu'un shell nu rouvre aussi dans son dossier.
+- ⚠️ **Promotion raw→tmux à chaud : impossible** sur macOS (pas de reptyr/SIP — on ne reparente pas un process en cours dans tmux). Au mieux « re-home » = redémarrer le shell ; à n'offrir qu'avec avertissement.
+
+Voir la mémoire `session-architecture-pivot` et la section « PTY + persistence » de `CLAUDE.md`.
 
 ---
 
@@ -99,7 +120,9 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
 - [x] Détecter la fin d'un run d'agent dans un pane.
   - [x] Piste : guetter la cloche du terminal (`BEL` 0x07) → octet détecté dans le thread lecteur → event `pty://bell/<id>`.
   - [ ] Piste : détecter le retour au prompt / l'inactivité (non nécessaire, le BEL suffit).
-- [x] Notification système macOS (via `osascript`).
+- [x] Notification système macOS — via **`tauri-plugin-notification`** (attribuée au bundle superkitty : fiable, vs. l'ancien `osascript` que macOS attribuait à « Script Editor » et silençait/rate-limitait).
+- [x] **Fiabilité** : la chaîne reposait sur un seul signal fragile (la cloche du `claude` interne). Durcie sur trois fronts — (1) tmux forcé par session à acheminer le BEL brut (`visual-bell off` + `bell-action any` + `monitor-bell on`, sinon un défaut `bell-action other` n'envoie jamais rien pour une session mono-fenêtre) ; (2) anti-rebond des cues OS + surbrillance toujours posée (découplée du gating) ; (3) **filet opt-in** (Settings → Notifications → « Renforcer la détection de fin d'agent ») : hook `Stop`/`Notification` gardé par `$SUPERKITTY` dans `~/.claude/settings.json`, qui force un BEL à chaque fin de tour — actif uniquement dans superkitty.
+- [x] **Sémantique (le faux positif « agent terminé »)** : un BEL nu sonne AUSSI en plein travail (un sous-agent qui finit…) → fausses notifs. Corrigé en rendant le signal **sémantique** : le BEL devient une simple **sonnette**, le *type* voyage via un **fichier marqueur vide par pane et par évènement** que le hook touche AVANT de sonner — `Stop` → `<pane>.stop`, `Notification` → `<pane>.notif` (dans `~/.superkitty/signals/`, 0700). **`SubagentStop` n'est PAS installé** → la fin d'un sous-agent ne notifie jamais. Le thread lecteur consomme le marqueur → `BellPayload { kind }` (`stop` | `notification` | `unknown`). `handleBell` : `stop` → « terminé » (vert), `notification` → « te réclame » (orange, set `need`), **`unknown` (BEL natif/sous-agent) → traînée seule, jamais de notif/son** = le correctif. Hooks **activés par défaut** (« Notifications fiables », réconcilié au lancement, migration OFF→ON sauf opt-out explicite via `reinforceAgentDoneUserSet`) ; commande hook idempotente + `; true` (no-op silencieux hors superkitty), `SUPERKITTY_PANE=<id>` identifie le pane. → réalise enfin l'orange « te réclame » du rail v2.
 - [x] Badge visuel sur l'onglet/pane concerné quand il n'est pas focus : **traînée lumineuse aux couleurs du ruban superkitty** qui encadre le pane (conic-gradient animé + halo), persistante **jusqu'à ce que tu engages le pane** — clic/focus (`setFocus`) ou frappe dans le pane (`onInteract`) ; le retour sur l'app (⌘Tab) ne l'efface pas.
 - [x] Petit **son** quand un agent termine (commande Rust `play_sound` → `afplay` du son système « Glass »), réglable indépendamment.
 - [x] Ne notifier que pour les panes non-actifs (pas celui que je regarde + fenêtre focus).
@@ -339,8 +362,10 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
 > les raccourcis aux nouveaux utilisateurs — qu'on apprenne à se servir de superkitty
 > sans avoir à lire une doc. (même friction de **découvrabilité** que les idées 10, 11, 12.)
 
-- [ ] **Barre de hint discrète** (bas de fenêtre / coin) qui montre une astuce à la fois,
-      ex. « Astuce : `⌘D` pour ouvrir une nouvelle fenêtre », et tourne entre les tips.
+- [x] **Barre de hint discrète** (en bas à gauche de la status bar `StatusBar`) qui montre une astuce
+      à la fois, ex. « Astuce : `⌘D` pour ouvrir une nouvelle fenêtre », et **tourne** (~9 s ; clic = suivante).
+      Astuces générées dynamiquement depuis `src/hints.ts` (curatées) + `resolveBindings`/`formatChord`,
+      donc elles reflètent les raccourcis **réassignés**. Le `×` de la barre les coupe (= toggle Settings).
 - [ ] **Hints contextuels** selon ce que fait l'utilisateur :
   - [ ] un seul pane ouvert depuis longtemps → suggérer `⌘D` / `⌃⇧↵` pour splitter.
   - [ ] plusieurs panes → suggérer `⌘`+flèches (focus) et `⌘⇧`+flèches (déplacer).
@@ -350,9 +375,9 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
       (nouvel onglet, nouveau pane, sidebar `⌘B`, changer de layout), avec « ne plus afficher ».
 - [ ] **Cheat sheet** complète des raccourcis ouvrable à la demande (ex. `⌘/` ou `?`),
       reprenant le tableau du CLAUDE.md → liste de toutes les actions + leurs touches.
-- [ ] Ne pas être intrusif : tips dismissables, fréquence réglable, et les masquer une fois
-      qu'un raccourci a été utilisé (« il connaît, on arrête de lui rappeler »).
-- [ ] Réglage on/off dans les Settings (idée 3) pour les masquer entièrement.
+- [~] Ne pas être intrusif : tips **dismissables** (× → off) ✓ ; fréquence réglable et masquage
+      « une fois qu'un raccourci a été utilisé » pas encore (tranché : rotation simple sur tout).
+- [x] Réglage on/off dans les Settings (idée 3, volet **Raccourcis** → `settings.hintsEnabled`) pour les masquer entièrement.
 - [ ] (relié aux idées 10 « numéros d'onglets », 11 « menu clic droit » et 12 « palette `⌘K` » :
       même objectif de découvrabilité ; la palette peut aussi servir de cheat sheet vivante.)
 
@@ -375,6 +400,61 @@ Construits d'un coup, fidèles aux mouvements de kitty + idées maison (tout com
       restent dans la palette `⌘K` (logique dans `App.onKeyDown`).
 - [~] (optionnel) un petit contrôle visuel de zoom (boutons +/− quelque part) en complément
       des raccourcis — le **stepper des Settings** (panneau Police) joue déjà ce rôle ; pas de bouton flottant.
+
+## 24. Masquer des shells (icône œil → bandeau à gauche, cloche quand Claude réclame)
+
+> Quand je lance plusieurs agents Claude en parallèle, je n'ai pas besoin de tous les voir
+> tout le temps. Je veux un truc **simple** : une **icône œil 👁 sur le pane** pour le **masquer**
+> (le sortir de l'affichage **sans le tuer** — la session continue de tourner en arrière-plan).
+> Les shells masqués s'empilent dans un **bandeau étroit sur la gauche** ; de là je peux les
+> **démasquer** d'un clic. Et quand **Claude a besoin de quelque chose**, une **cloche 🔔**
+> apparaît sur l'entrée du bandeau pour me dire « celui-là te réclame ».
+
+- [ ] **Icône œil 👁 sur le pane** (au survol, près du ⛶ #9) → masque le pane : retiré de la grille
+      de l'onglet **sans détacher la session tmux** (le process, `claude` inclus, continue ; ≠
+      `pty_detach` qui lâche le PTY, ≠ `pty_kill`). Le pane reste **monté mais hors layout** (sorti
+      de `Tab.panes`) → l'output continue d'arriver en arrière-plan. Le layout se recalcule (comme
+      tout add/close). Aussi accessible via menu clic droit (#11) et palette `⌘K` (#12).
+- [ ] **Bandeau étroit à gauche** listant les shells masqués sous forme de pastilles verticales
+      (nom + teinte projet #17). Cliquer une pastille = **démasquer** → le pane revient dans le
+      layout. (Le bandeau se cache quand il n'y a rien de masqué.)
+- [ ] **Cloche 🔔 quand Claude réclame** : réutiliser la détection de fin d'agent (#6, le `BEL`) →
+      quand un pane masqué sonne, une cloche s'allume sur sa pastille (+ traînée lumineuse #6 / notif
+      macOS + son, comme un pane non-focus). La cloche s'éteint quand on démasque/engage le pane.
+  - [ ] Bonus : distinguer « Claude a **fini** » de « Claude **attend une réponse** » (question /
+        validation) — le plus urgent à faire remonter (le `Notification` hook de Claude, déjà branché
+        #6, peut aider à différencier).
+- [ ] Persister la liste des panes masqués dans `localStorage` (`superkitty.layout.v1`) → ils
+      restent masqués (et réattachables) après un restart, comme le reste du layout.
+- [ ] À trancher : un pane démasqué revient-il à sa place exacte (slot « fantôme ») ou en fin de
+      liste ? (cohérence avec le rouvrir-fermé #1.) + raccourci pour masquer/démasquer.
+- [ ] (relié à #2 sidebar de sessions ; #6 notifications ; #9 zoom — masquer est l'inverse de
+      zoomer, on pousse le pane hors-champ.)
+
+---
+
+## 25. Touche « façon Warp » : barre de contexte + lanceur de commande à suggestions
+
+> J'aime l'interface de Warp : la **barre du bas propre** (version node, dossier, branche git,
+> stats de diff) et les **suggestions de commande** (quand tu fais `cd`, il te propose les
+> dossiers). C'est plus beau que nous. *(Contrainte : superkitty fait tourner `claude` en plein
+> écran → on ne refait PAS le terminal « à blocs » de Warp, on prend juste les deux morceaux qui
+> rendent ça beau, sans toucher au moteur PTY/xterm.)*
+
+- [x] **Barre du bas enrichie** (`StatusBar`, les deux modes) : groupe contexte à gauche —
+      `⬡ node` · `📁 cwd` · `⎇ branche` · `📄 N • +ajouts −retraits`. Chaque segment se masque si
+      indisponible (pas de repo, node absent…). Alimenté par la commande Rust `pane_context`
+      (lance `node --version` + `git` dans le cwd de la pane active), pollé ~2,5 s sur la **seule**
+      pane focalisée de l'onglet actif.
+- [x] **Lanceur de commande à la demande** (`CommandBar`, raccourci réassignable **⌘L**, aussi dans
+      la palette `⌘K`) : champ flottant ancré en bas avec suggestions fuzzy (`fuzzyScore` réutilisé).
+      Sources : **répertoires** du cwd pour `cd` (`list_dirs`), **historique** du shell
+      (`shell_history` lit `$HISTFILE`/`~/.zsh_history`), **fichiers** sur le dernier argument
+      (`list_files`). `↑/↓` naviguent, `Tab`/`→` complètent (pour drill `cd a` → `cd a/b`), `↵`
+      exécute dans la pane focalisée (`pty_write` + `\r`), `Esc` ferme. Avertit si `claude`/un éditeur
+      est au premier plan (la ligne sera tapée dedans, pas au shell).
+- [ ] Bonus futur : ghost-text inline dans le champ (auto-complétion à la Warp) ; détecter le runtime
+      du projet (Rust/Python…) au lieu de node seul ; suggestions de flags par commande.
 
 ---
 

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>superkitty — Proto C · hybride (rail projet + fenêtrage kitty + zoom)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,500;1,400;1,500;1,600&family=JetBrains+Mono:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   superkitty — PROTO C « hybride » v2 (interactif)
+   Le rail projet sert de navigation ; AU NIVEAU PROJET on garde
+   tout le fenêtrage kitty : changer de disposition (tall/fat/
+   grille/colonnes/lignes/stack), agrandir/découpler une fenêtre.
+     · clic PROJET   → vue multi-panes (disposition adaptable)
+     · ▦ switcher    → réarrange les fenêtres (animé)
+     · ⤢ / clic pane → agrandit une fenêtre en plein (découple)
+     · ← / Esc       → retour à la grille du projet
+   Platinum Noir, multicolor en touches.
+   ============================================================ */
+
+:root {
+  --rb-green:#6FB36A; --rb-yellow:#F0C04E; --rb-orange:#EE965A;
+  --rb-red:#E2685E; --rb-purple:#A87FC4; --rb-blue:#54AEC0;
+  --bg:#1C1A17; --bg-2:#211E1A; --panel:#26241F; --panel-2:#2E2B25; --panel-3:#38342D;
+  --cream:#EAE5D6; --cream-soft:#C4BEAD; --cream-faint:#8E897A;
+  --edge:#34302A; --edge-2:#15130F; --hi:rgba(255,250,235,.05);
+  --term-bg:#181612; --term-fg:#EAE5D6; --term-dim:#8A8474;
+  --diff-add-bg:rgba(84,174,192,.13); --diff-del-bg:rgba(226,104,94,.11);
+  --brand:"EB Garamond",Garamond,"Times New Roman",serif;
+  --pixel:"Silkscreen",monospace;
+  --mono:"JetBrains Mono",Monaco,"SF Mono",Menlo,monospace;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; min-height:100vh; font-family:var(--ui); color:var(--cream); background-color:#131210;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.010) 0 1px, transparent 1px 5px),
+    radial-gradient(1100px 600px at 84% -10%, rgba(84,174,192,.10), transparent 60%),
+    radial-gradient(900px 520px at -8% 110%, rgba(168,127,196,.08), transparent 60%);
+  -webkit-font-smoothing:antialiased;
+  display:flex; flex-direction:column; align-items:center; padding:34px 28px 56px; gap:14px;
+}
+body::after{ content:""; position:fixed; inset:0; pointer-events:none; z-index:9999; opacity:.14;
+  mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+.proto-label{ font-family:var(--pixel); font-size:10px; letter-spacing:.4px; color:var(--cream-faint); text-transform:uppercase;}
+.proto-label b{ color:var(--rb-green);}
+.proto-label .hint{ color:var(--cream-faint); opacity:.75; text-transform:none; font-family:var(--ui); font-size:11px; margin-left:10px;}
+
+.app-win{ width:min(1180px,100%); border-radius:13px; overflow:hidden; background:var(--bg);
+  border:1px solid var(--edge-2);
+  box-shadow:0 1px 0 var(--hi) inset, 0 30px 80px rgba(0,0,0,.55), 0 8px 24px rgba(0,0,0,.4);
+  display:flex; flex-direction:column;}
+.topbar{ height:42px; display:flex; align-items:center; padding:0 14px 0 16px;
+  background:linear-gradient(180deg,#232019,var(--bg-2)); border-bottom:1px solid var(--edge-2);
+  box-shadow:0 1px 0 var(--hi) inset;}
+.traffic{ display:flex; align-items:center; gap:8px;}
+.traffic i{ width:12px; height:12px; border-radius:50%; display:block; box-shadow:0 0 0 .5px rgba(0,0,0,.35) inset;}
+.traffic .r{background:radial-gradient(circle at 35% 30%,#ff7d6e,#e2685e);}
+.traffic .y{background:radial-gradient(circle at 35% 30%,#ffd66a,#f0c04e);}
+.traffic .g{background:radial-gradient(circle at 35% 30%,#8fd388,#6fb36a);}
+.topbar .sp{flex:1;}
+.wordmark{ font-family:var(--brand); font-style:italic; font-weight:500; font-size:23px; line-height:1; padding:0 4px;
+  background-image:linear-gradient(100deg,var(--rb-green) 0%,var(--rb-yellow) 20%,var(--rb-orange) 40%,var(--rb-red) 60%,var(--rb-purple) 80%,var(--rb-blue) 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 1px 6px rgba(120,140,160,.18));}
+.icon-btn{ width:30px; height:30px; border-radius:8px; display:grid; place-items:center; color:var(--cream-faint); font-size:15px; margin-left:6px; cursor:default;}
+.icon-btn:hover{ background:rgba(255,255,255,.04); color:var(--cream-soft);}
+
+.body{ display:grid; grid-template-columns:280px 1fr; height:586px;}
+
+/* ===== Rail ===== */
+.rail{ background:linear-gradient(180deg,#211E19,#1b1915); border-right:1px solid var(--edge-2);
+  display:flex; flex-direction:column; min-height:0;}
+.rail-head{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px 8px;}
+.rail-head .ttl{ font-family:var(--pixel); font-size:9px; letter-spacing:.5px; color:var(--cream-faint); text-transform:uppercase;}
+.rail-head .add{ font-family:var(--mono); font-size:13px; color:var(--cream-faint); width:22px; height:22px; border-radius:6px; display:grid; place-items:center; cursor:default;}
+.rail-head .add:hover{ background:rgba(255,255,255,.05); color:var(--cream-soft);}
+.rail-scroll{ flex:1; overflow:auto; padding:2px 8px;}
+.rail-scroll::-webkit-scrollbar{ width:0;}
+.proj{ margin-bottom:4px; border-radius:9px;}
+.proj.active-proj{ background:rgba(255,255,255,.022);}
+.proj-head{ display:flex; align-items:center; gap:8px; padding:8px; border-radius:8px; cursor:pointer;
+  font-size:12.5px; font-weight:700; color:var(--cream-soft); transition:background .12s,color .12s;}
+.proj-head:hover{ background:rgba(255,255,255,.035); color:var(--cream);}
+.proj.active-proj .proj-head{ color:var(--cream);}
+.proj.active-proj .proj-head .pdot{ box-shadow:0 0 10px color-mix(in srgb,var(--tint) 70%,transparent);}
+.proj-head .pdot{ width:9px; height:9px; border-radius:50%; background:var(--tint); flex:none;
+  box-shadow:0 0 6px color-mix(in srgb,var(--tint) 45%,transparent);}
+.proj-head .br{ margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--cream-faint); font-weight:400;}
+.proj-head .cnt{ font-family:var(--mono); font-size:10px; color:var(--cream-faint); font-weight:400; opacity:.8;}
+/* boutons de lancement au survol d'un projet (presets d'agents) */
+.proj-head .pacts{ margin-left:auto; display:flex; align-items:center; gap:2px; opacity:0; transition:opacity .12s;}
+.proj-head:hover .pacts{ opacity:1;}
+.proj-head:hover .br, .proj-head:hover .cnt{ display:none;}
+.pacts b{ width:21px; height:21px; border-radius:6px; display:grid; place-items:center; font-size:11px; font-weight:400;
+  color:var(--cream-faint); border:1px solid transparent;}
+.pacts b:hover{ background:rgba(255,255,255,.06); color:var(--cream); border-color:var(--edge);}
+.pacts b.add{ color:var(--cream-soft);}
+.sessions{ padding:2px 0 4px 0;}
+.session{ position:relative; display:flex; align-items:center; gap:9px; padding:6px 9px 6px 12px; margin:1px 4px;
+  border-radius:7px; font-size:12px; color:var(--cream-faint); cursor:pointer; transition:background .12s,color .12s;}
+.session:hover{ background:rgba(255,255,255,.04); color:var(--cream-soft);}
+.session .ttl{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.session .meta{ margin-left:auto; display:flex; align-items:center; gap:7px; flex:none;}
+.session .pin{ color:var(--cream-faint); opacity:.6; display:flex; align-items:center;}
+.session .time{ font-family:var(--mono); font-size:10px; color:var(--cream-faint); opacity:.7;}
+.session .num{ font-family:var(--mono); font-size:10px; color:var(--cream-faint); opacity:.85; display:none;}
+.session:hover .time, .session.sel .time{ display:none;}
+.session:hover .num, .session.sel .num{ display:inline;}
+.session.sel{ background:linear-gradient(90deg,color-mix(in srgb,var(--tint) 20%,transparent),transparent 72%);
+  color:var(--cream); box-shadow:inset 2px 0 0 var(--tint);}
+/* nœud Worktrees + « Afficher N de plus » */
+.wt{ display:flex; align-items:center; gap:9px; padding:6px 9px 6px 12px; margin:1px 4px; border-radius:7px;
+  font-size:12px; color:var(--cream-soft); cursor:pointer; transition:background .12s;}
+.wt:hover{ background:rgba(255,255,255,.035);}
+.wt .ic{ width:14px; text-align:center; color:var(--cream-faint);}
+.wt .cnt2{ margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--cream-faint);
+  background:rgba(255,255,255,.06); border-radius:5px; padding:0 6px;}
+.wt .chev{ color:var(--cream-faint); opacity:.7;}
+.more{ padding:4px 9px 7px 35px; margin:0 4px; font-size:11px; color:var(--cream-faint); opacity:.7; cursor:pointer;}
+.more:hover{ opacity:1; color:var(--cream-soft);}
+.st{ width:14px; text-align:center; flex:none; font-size:11px;}
+.st.busy{ color:var(--rb-green); animation:pulse 1.4s ease-in-out infinite;}
+.st.done{ color:var(--rb-green);}
+.st.idle{ color:var(--cream-faint); opacity:.5;}
+.st.need{ color:var(--rb-orange); animation:pulse 1.1s ease-in-out infinite;}
+@keyframes pulse{ 50%{opacity:.35;}}
+.legend{ display:flex; gap:11px; padding:8px 14px 10px; font-size:10px; color:var(--cream-faint); flex-wrap:wrap;}
+.legend span{ display:flex; align-items:center; gap:5px;}
+.legend i{ width:7px; height:7px; border-radius:50%; display:inline-block;}
+.legend .b{background:var(--rb-green);} .legend .n{background:var(--rb-orange);} .legend .d{background:var(--cream-faint); opacity:.5;}
+.rail-foot{ border-top:1px solid var(--edge-2); padding:9px 12px; display:flex; align-items:center; gap:8px; font-size:12px; color:var(--cream-faint);}
+.rail-foot .gear{ margin-left:auto;}
+
+/* ===== Zone principale ===== */
+.main{ display:flex; flex-direction:column; min-height:0; background:var(--term-bg);}
+.crumb{ display:flex; align-items:center; gap:10px; height:42px; padding:0 12px 0 16px; flex:none;
+  border-bottom:1px solid rgba(255,255,255,.05); font-family:var(--mono); font-size:12px; color:var(--cream-soft);}
+.crumb .cdot{ width:9px; height:9px; border-radius:50%; background:var(--tint); flex:none;
+  box-shadow:0 0 8px color-mix(in srgb,var(--tint) 55%,transparent);}
+.crumb .sep{ color:var(--cream-faint); opacity:.6;}
+.crumb .proj-name{ color:var(--cream); cursor:pointer;}
+.crumb .proj-name:hover{ text-decoration:underline;}
+.crumb .leaf{ color:var(--cream);}
+.crumb .br{ color:var(--cream-faint);}
+.crumb .right{ margin-left:auto; display:flex; align-items:center; gap:10px; color:var(--cream-faint); font-size:11px;}
+.crumb .back{ display:flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid var(--edge); border-radius:8px;
+  color:var(--cream-soft); cursor:pointer; transition:background .12s,border-color .12s;}
+.crumb .back:hover{ background:rgba(255,255,255,.04); border-color:var(--cream-faint);}
+
+/* switcher de disposition (fenêtrage kitty) */
+.lay-switch{ display:flex; align-items:center; gap:2px; padding:2px; border:1px solid var(--edge);
+  border-radius:9px; background:rgba(0,0,0,.18);}
+.lay{ width:26px; height:22px; border:0; background:transparent; border-radius:6px; cursor:pointer;
+  display:grid; place-items:center; color:var(--cream-faint); font-size:13px; line-height:1;
+  transition:background .12s,color .12s;}
+.lay:hover{ background:rgba(255,255,255,.05); color:var(--cream-soft);}
+.lay.on{ background:var(--panel-2); color:var(--cream); box-shadow:0 1px 0 var(--hi) inset;}
+
+.stage{ flex:1; min-height:0; padding:9px; position:relative; overflow:hidden;}
+
+/* grille multi-panes : positionnement absolu animé (comme layouts.ts) */
+.grid{ position:relative; width:100%; height:100%;}
+.pane{ position:absolute; border-radius:10px; overflow:hidden; background:var(--term-bg);
+  border:1px solid var(--edge); display:flex; flex-direction:column; min-height:0; cursor:pointer;
+  transition:left .26s cubic-bezier(.2,.8,.2,1), top .26s cubic-bezier(.2,.8,.2,1),
+             width .26s cubic-bezier(.2,.8,.2,1), height .26s cubic-bezier(.2,.8,.2,1),
+             border-color .12s, box-shadow .12s;}
+.pane:hover{ box-shadow:0 10px 26px rgba(0,0,0,.4);}
+.pane.focus{ border-color:var(--tint); box-shadow:0 0 0 1px color-mix(in srgb,var(--tint) 35%,transparent);}
+.pane.focus:hover{ box-shadow:0 0 0 1px color-mix(in srgb,var(--tint) 35%,transparent), 0 10px 26px rgba(0,0,0,.4);}
+.pane-ctl{ position:absolute; top:7px; right:8px; z-index:6; display:flex; gap:5px; opacity:0; transition:opacity .12s;}
+.pane:hover .pane-ctl{ opacity:1;}
+.pane-ctl b{ width:23px; height:23px; border-radius:7px; display:grid; place-items:center; font-size:12px;
+  color:var(--cream-faint); background:rgba(20,18,14,.82); border:1px solid var(--edge); font-weight:400;}
+.pane-ctl b.x:hover{ color:#fff; background:var(--rb-red); border-color:var(--rb-red);}
+.pane-ctl b.z:hover{ color:var(--cream); border-color:var(--tint);}
+.pane-bar{ display:flex; align-items:center; gap:8px; height:28px; padding:0 12px; flex:none;
+  font-family:var(--mono); font-size:11px; color:var(--cream-faint); border-bottom:1px solid rgba(255,255,255,.04);}
+.pane.focus .pane-bar{ color:var(--cream-soft);}
+.pane-bar .pdot{ width:7px; height:7px; border-radius:50%; flex:none;}
+.pane-bar .pid{ margin-left:auto; opacity:.6;}
+
+/* anneau ruban agent terminé */
+@property --trail-a{ syntax:"<angle>"; inherits:false; initial-value:0deg;}
+.pane.finished{ border-color:transparent;}
+.finished-ring::after{ content:""; position:absolute; inset:0; border-radius:10px; padding:1.4px; z-index:5; pointer-events:none;
+  background:conic-gradient(from var(--trail-a),var(--rb-green),var(--rb-yellow),var(--rb-orange),var(--rb-red),var(--rb-purple),var(--rb-blue),var(--rb-green));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); mask-composite:exclude;
+  animation:trail 3.4s linear infinite; opacity:.8;}
+@keyframes trail{ to{ --trail-a:360deg;}}
+
+/* terminal */
+.term{ flex:1; min-height:0; overflow:hidden; font-family:var(--mono); font-size:11.5px; line-height:1.62;
+  color:var(--term-fg); padding:12px 15px;}
+.single .term{ font-size:12.5px; line-height:1.7; padding:16px 20px;}
+.term .row{ white-space:pre-wrap;}
+.term .dim{color:var(--term-dim);} .term .path{color:var(--rb-blue);} .term .pr{color:var(--rb-purple);}
+.term .star{color:var(--rb-orange);} .term .ok{color:var(--rb-green);} .term .warn{color:var(--rb-yellow);}
+.term .info{color:var(--rb-blue);} .term .need{color:var(--rb-orange);} .term b{color:var(--cream); font-weight:600;}
+.term .cursor{ display:inline-block; width:7px; height:13px; vertical-align:-2px; background:var(--rb-green);
+  box-shadow:0 0 8px rgba(111,179,106,.6); animation:blink 1.1s steps(1) infinite;}
+@keyframes blink{ 50%{opacity:0;}}
+.diff{ margin:5px 0; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,.05);}
+.diff .ln{ display:flex; gap:12px; padding:0 10px;}
+.diff .ln .no{ color:var(--term-dim); width:22px; text-align:right; opacity:.7;}
+.diff .ln.del{ background:var(--diff-del-bg);} .diff .ln.add{ background:var(--diff-add-bg);}
+.diff .ln.del .sg{ color:var(--rb-red);} .diff .ln.add .sg{ color:var(--rb-blue);}
+.diff .ln .sg{ width:8px; display:inline-block;}
+.status-line{ color:var(--rb-orange); margin-top:4px;}
+.status-line .spin{ display:inline-block; animation:spin 1s steps(8) infinite;}
+@keyframes spin{ to{ transform:rotate(360deg);}}
+.tip{ color:var(--term-dim); margin-top:2px;}
+
+/* stack : une fenêtre au-dessus + cartes décalées derrière + pastilles */
+.stackwrap{ position:absolute; inset:0; display:flex; flex-direction:column; gap:8px;}
+.stack-tabs{ display:flex; gap:6px; flex:none;}
+.stack-tab{ display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:8px; cursor:pointer;
+  font-family:var(--mono); font-size:11px; color:var(--cream-faint); border:1px solid var(--edge); background:rgba(0,0,0,.18);
+  transition:background .12s,color .12s;}
+.stack-tab:hover{ color:var(--cream-soft);}
+.stack-tab.on{ color:var(--cream); border-color:var(--tint); background:color-mix(in srgb,var(--tint) 14%,transparent);}
+.stack-tab .d{ width:7px; height:7px; border-radius:50%; background:var(--cream-faint);}
+.stack-area{ position:relative; flex:1; min-height:0;}
+.stack-card{ position:absolute; inset:0; border-radius:10px; border:1px solid var(--edge); background:#161410;}
+.stack-card.c1{ transform:translate(10px,-9px); opacity:.5;}
+.stack-card.c2{ transform:translate(20px,-18px); opacity:.28;}
+.stack-area .pane{ position:absolute; inset:0; cursor:pointer;}
+
+/* vue « single » (fenêtre découplée / zoomée) */
+.single{ position:absolute; inset:0; border-radius:10px; overflow:hidden; border:1px solid var(--tint);
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--tint) 30%,transparent); display:flex; flex-direction:column; background:var(--term-bg);}
+.single.finished{ border-color:transparent;}
+.composer{ flex:none; border-top:1px solid rgba(255,255,255,.05); padding:11px 16px 9px;}
+.input{ display:flex; align-items:center; gap:10px; border:1px solid var(--edge); border-radius:10px; padding:10px 14px;
+  background:#161410; font-family:var(--mono); font-size:12.5px; color:var(--cream);}
+.input .pr{ color:var(--rb-purple);} .input .cursor{ width:7px; height:14px;}
+.composer-foot{ display:flex; align-items:center; margin-top:7px; font-family:var(--mono); font-size:10.5px; color:var(--cream-faint);}
+.composer-foot .bp{ color:var(--rb-orange);} .composer-foot .right{ margin-left:auto; font-variant-numeric:tabular-nums;}
+
+.caption{ width:min(1180px,100%); font-family:var(--brand); font-style:italic; font-size:15px; color:var(--cream-soft); line-height:1.55;}
+.caption b{ color:var(--cream); font-style:normal;} .caption .hl{ color:var(--rb-green); font-style:normal;}
+</style>
+</head>
+<body>
+  <div class="proto-label"><b>Proto C</b> · hybride — rail projet + fenêtrage kitty + zoom
+    <span class="hint">↳ clique un projet · change la disposition (▦) · agrandis une fenêtre (Esc pour revenir)</span></div>
+
+  <div class="app-win">
+    <div class="topbar">
+      <div class="traffic"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+      <div class="sp" data-tauri-drag-region></div>
+      <div class="wordmark">superkitty</div>
+      <div class="icon-btn" id="layBtn" title="Disposition (cycle)">▦</div>
+      <div class="icon-btn">⚙</div>
+    </div>
+
+    <div class="body">
+      <aside class="rail">
+        <div class="rail-head"><span class="ttl">Projets</span><span class="add">+</span></div>
+        <div class="rail-scroll" id="rail"></div>
+        <div class="legend">
+          <span><i class="b"></i> en cours</span>
+          <span><i class="n"></i> te réclame</span>
+          <span><i class="d"></i> au repos</span>
+        </div>
+        <div class="rail-foot"><span>＋ nouvelle session</span><span class="gear">⚙</span></div>
+      </aside>
+
+      <section class="main">
+        <div class="crumb" id="crumb"></div>
+        <div class="stage" id="stage"></div>
+      </section>
+    </div>
+  </div>
+
+  <p class="caption">
+    <b>Proto C v2 — le rail navigue, mais le fenêtrage kitty reste entier au niveau projet.</b> Clic sur un
+    <span class="hl">projet</span> → ses fenêtres en multi-panes ; le <b>switcher ▦</b> réarrange la disposition
+    (<span class="hl">tall · fat · grille · colonnes · lignes · stack</span>, transition animée) exactement comme
+    aujourd'hui ; chaque fenêtre garde ses contrôles (<b>⤢ découpler/agrandir</b>, <b>✕ fermer</b>) ; et tu peux
+    <b>agrandir une fenêtre</b> en plein puis revenir (<span class="hl">Esc</span>). Le rail ajoute juste la navigation
+    par projet et le drill direct vers une fenêtre.
+  </p>
+
+<script>
+const PROJECTS = [
+  { id:"superkitty", name:"superkitty", tint:"hsl(216,65%,68%)", branch:"main", worktrees:2, more:4, panes:[
+    { id:"p1", label:"claude · ~/Dev/superkitty", dot:"hsl(216,65%,68%)", status:"busy", main:true, title:"Mapper la palette Platinum Noir", num:"⌘1", time:"now",
+      html:`<div class="row"><span class="star">✻</span> <b>Claude Code</b> <span class="dim">v2.1.170 · Opus 4.8 · ~/Dev/superkitty</span></div>
+            <div class="row">&nbsp;</div>
+            <div class="row"><span class="info">●</span> <b>Read</b><span class="dim">(src/App.css)</span></div>
+            <div class="row dim">  └ 412 lignes lues</div>
+            <div class="row"><span class="dim">●</span> Je mappe la palette « Platinum Noir » sur les tokens du thème.</div>
+            <div class="row"><span class="info">●</span> <b>Update</b><span class="dim">(src/App.css)</span> <span class="dim">· +2 −1</span></div>
+            <div class="diff">
+              <div class="ln"><span class="no">12</span><span class="sg"> </span><span class="dim">:root {</span></div>
+              <div class="ln del"><span class="no">13</span><span class="sg">-</span><span class="dim">  --bg: #16151a;</span></div>
+              <div class="ln add"><span class="no">13</span><span class="sg">+</span><span>  --bg: #1C1A17;</span></div>
+              <div class="ln add"><span class="no">14</span><span class="sg">+</span><span>  --cream: #EAE5D6;</span></div>
+            </div>
+            <div class="row"><span class="pr">❯</span> rends la bordure du pane actif à la teinte du projet</div>
+            <div class="status-line"><span class="spin">✶</span> Waddling… <span class="dim">(1m 12s · ↓ 6.4k tokens)</span></div>
+            <div class="tip">  └ Astuce : /btw pour une question rapide sans interrompre</div>` },
+    { id:"p2", label:"vite · dev", dot:"hsl(140,65%,68%)", status:"idle", title:"vite · serveur de dev", num:"⌘2", time:"5m", pin:true,
+      html:`<div class="row"><span class="ok">VITE</span> <span class="dim">v5  ready in 312 ms</span></div>
+            <div class="row"><span class="path">  ➜ localhost:1420</span></div>
+            <div class="row dim">  hmr update /src/App.css</div>
+            <div class="row"><span class="ok">✓</span> <span class="dim">built in 84 ms</span></div>` },
+    { id:"p3", label:"cargo · src-tauri", dot:"hsl(28,65%,68%)", status:"done", title:"cargo check", num:"⌘3", time:"12m",
+      html:`<div class="row"><span class="pr">❯</span> cargo check</div>
+            <div class="row warn">  Compiling superkitty…</div>
+            <div class="row"><span class="ok">✓</span> <span class="dim">Finished · 0 warnings</span></div>
+            <div class="row dim">  pty.rs · sandbox-exec</div>` },
+  ]},
+  { id:"api-gateway", name:"api-gateway", tint:"hsl(28,65%,68%)", branch:"rate-limit", worktrees:1, panes:[
+    { id:"p1", label:"claude · api-gateway", dot:"hsl(28,65%,68%)", status:"done", main:true, title:"Refactor checkout en server comps", num:"⌘4", time:"2h",
+      html:`<div class="row"><span class="ok">✓</span> <b>Middleware de rate-limiting ajouté</b></div>
+            <div class="row dim">  3 fichiers · +84 −12</div>
+            <div class="row"><span class="ok">✓</span> Tests <span class="dim">12 passés</span></div>
+            <div class="row">&nbsp;</div>
+            <div class="row"><span class="pr">❯</span> <span class="dim">prêt</span></div>` },
+    { id:"p2", label:"codex · tests", dot:"hsl(255,65%,68%)", status:"busy", title:"codex · migrer les tests vers vitest", num:"⌘5", time:"now",
+      html:`<div class="row"><span class="info">●</span> <b>codex</b> <span class="dim">migration jest → vitest</span></div>
+            <div class="row dim">  12 / 30 fichiers convertis…</div>
+            <div class="status-line"><span class="spin">✶</span> en cours…</div>` },
+    { id:"p3", label:"vitest · watch", dot:"hsl(140,65%,68%)", status:"idle", title:"vitest · watch", num:"⌘6", time:"8m", pin:true,
+      html:`<div class="row"><span class="ok">✓</span> <span class="dim">18 passés</span> · <span class="warn">2 en attente</span></div>
+            <div class="row dim">  watch · src/**/*.test.ts</div>` },
+  ]},
+  { id:"design-system", name:"design-system", tint:"hsl(285,65%,68%)", branch:"tokens", panes:[
+    { id:"p1", label:"claude · design-system", dot:"hsl(285,65%,68%)", status:"need", main:true, title:"Ajouter les tokens dark-mode au Button", num:"⌘7", time:"now",
+      html:`<div class="row"><span class="info">●</span> <b>Update</b><span class="dim">(Button.tsx)</span></div>
+            <div class="row dim">  bg-white → bg-surface · text-black → text-foreground</div>
+            <div class="row">&nbsp;</div>
+            <div class="row"><span class="need">●</span> <b>J'ai besoin de toi</b> — j'applique aussi au focus ring ?</div>
+            <div class="row dim">  ❯ <b>oui</b> / non</div>` },
+    { id:"p2", label:"claude · stories", dot:"hsl(285,65%,68%)", status:"idle", title:"Stories Storybook des inputs", num:"⌘8", time:"1d",
+      html:`<div class="row dim">  en attente…</div>
+            <div class="row"><span class="pr">❯</span> <span class="dim">prêt</span></div>` },
+  ]},
+  { id:"marketing-site", name:"marketing-site", tint:"hsl(140,65%,68%)", branch:"main", panes:[
+    { id:"p1", label:"claude · marketing-site", dot:"hsl(140,65%,68%)", status:"idle", main:true, title:"Resserrer le hero + nav glass", num:"⌘9", time:"3d",
+      html:`<div class="row dim">  rien en cours</div>
+            <div class="row"><span class="pr">❯</span> <span class="dim">prêt</span></div>` },
+  ]},
+];
+
+/* langage de statut harmonisé : une pastille, couleur = état (orange = te réclame uniquement) */
+const ST = { busy:["busy","●"], done:["done","●"], idle:["idle","○"], need:["need","●"] };
+const LAYOUTS = [
+  {id:"tall",  name:"Tall",     icon:"◧"},
+  {id:"fat",   name:"Fat",      icon:"⬓"},
+  {id:"grid",  name:"Grille",   icon:"▦"},
+  {id:"cols",  name:"Colonnes", icon:"▥"},
+  {id:"rows",  name:"Lignes",   icon:"☰"},
+  {id:"stack", name:"Stack",    icon:"▢"},
+];
+let activeProj = "superkitty";
+let zoomPane   = null;   // fenêtre agrandie (id) ou null
+let layout     = "tall"; // disposition de la grille
+let stackTop   = 0;      // fenêtre au-dessus en mode stack
+
+function proj(){ return PROJECTS.find(p=>p.id===activeProj); }
+
+/* rectangles de disposition (fractions 0..1) — façon layouts.ts */
+function rects(lay, n){
+  if(n===1) return [{x:0,y:0,w:1,h:1}];
+  const R=[];
+  if(lay==="tall"){ const m=0.6; R.push({x:0,y:0,w:m,h:1}); const k=n-1;
+    for(let i=0;i<k;i++) R.push({x:m,y:i/k,w:1-m,h:1/k}); }
+  else if(lay==="fat"){ const m=0.58; R.push({x:0,y:0,w:1,h:m}); const k=n-1;
+    for(let i=0;i<k;i++) R.push({x:i/k,y:m,w:1/k,h:1-m}); }
+  else if(lay==="cols"){ for(let i=0;i<n;i++) R.push({x:i/n,y:0,w:1/n,h:1}); }
+  else if(lay==="rows"){ for(let i=0;i<n;i++) R.push({x:0,y:i/n,w:1,h:1/n}); }
+  else { // grid
+    const cols=Math.ceil(Math.sqrt(n)), rows=Math.ceil(n/cols);
+    for(let i=0;i<n;i++){ const r=Math.floor(i/cols);
+      const inRow=(r===rows-1)?(n-cols*(rows-1)):cols; const c=i-cols*r;
+      R.push({x:c/inRow, y:r/rows, w:1/inRow, h:1/rows}); }
+  }
+  return R;
+}
+
+function renderRail(){
+  const rail=document.getElementById("rail");
+  rail.innerHTML=PROJECTS.map(p=>{
+    const wt = p.worktrees ? `<div class="wt"><span class="ic">⑂</span> Worktrees <span class="cnt2">${p.worktrees}</span><span class="chev">›</span></div>` : "";
+    const sess=p.panes.map(pn=>{
+      const [cls,gl]=ST[pn.status];
+      const sel=(p.id===activeProj && zoomPane===pn.id)?" sel":"";
+      const pin = pn.pin ? `<span class="pin"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l-1.2 7 3.2 3H7l3.2-3z"/><line x1="12" y1="17" x2="12" y2="22"/></svg></span>` : "";
+      return `<div class="session${sel}" style="--tint:${p.tint}" data-proj="${p.id}" data-pane="${pn.id}">
+        <span class="st ${cls}">${gl}</span><span class="ttl">${pn.title}</span>
+        <span class="meta">${pin}<span class="time">${pn.time||""}</span><span class="num">${pn.num}</span></span></div>`;
+    }).join("");
+    const more = p.more ? `<div class="more">Afficher ${p.more} de plus</div>` : "";
+    return `<div class="proj${p.id===activeProj?" active-proj":""}" style="--tint:${p.tint}">
+      <div class="proj-head" data-proj="${p.id}"><span class="pdot"></span> ${p.name}
+        <span class="cnt">${p.panes.length}</span><span class="br">⎇ ${p.branch}</span>
+        <span class="pacts"><b title="Nouvel agent claude">✻</b><b title="codex">◆</b><b title="gemini">✦</b><b class="add" title="Nouvelle session">+</b></span>
+      </div>${wt}<div class="sessions">${sess}</div>${more}</div>`;
+  }).join("");
+  rail.querySelectorAll(".proj-head").forEach(el=>el.onclick=()=>selectProject(el.dataset.proj));
+  rail.querySelectorAll(".session").forEach(el=>el.onclick=()=>openPane(el.dataset.proj, el.dataset.pane));
+}
+
+function renderCrumb(){
+  const p=proj(), c=document.getElementById("crumb");
+  let html=`<span class="cdot" style="--tint:${p.tint}"></span>
+    <span class="proj-name" id="crumb-proj">${p.name}</span> <span class="br">⎇ ${p.branch}</span>`;
+  if(zoomPane){
+    const pn=p.panes.find(x=>x.id===zoomPane);
+    html+=` <span class="sep">›</span> <span class="leaf">${pn.label.split(" · ")[0]} · ${pn.id}</span>`;
+    html+=`<div class="right"><div class="back" id="back">← grille du projet</div></div>`;
+  }
+  c.style.setProperty("--tint", p.tint);
+  c.innerHTML=html;
+  const cp=document.getElementById("crumb-proj"); if(cp) cp.onclick=()=>{ zoomPane=null; render(); };
+  const bk=document.getElementById("back"); if(bk) bk.onclick=()=>{ zoomPane=null; render(); };
+}
+
+function paneCell(p, pn, style){
+  const fin = pn.status==="done";
+  const foc = pn.main ? " focus" : "";
+  return `<div class="pane${foc}${fin?" finished finished-ring":""}" style="--tint:${p.tint};${style||""}" data-pane="${pn.id}">
+    <div class="pane-ctl"><b class="z" title="Agrandir / découpler">⤢</b><b class="x" title="Fermer">✕</b></div>
+    <div class="pane-bar"><span class="pdot" style="background:${pn.dot}"></span> ${pn.label}<span class="pid">${pn.id}</span></div>
+    <div class="term">${pn.html}</div></div>`;
+}
+
+function renderStage(){
+  const p=proj(), stage=document.getElementById("stage");
+
+  if(zoomPane){
+    const pn=p.panes.find(x=>x.id===zoomPane), fin=pn.status==="done";
+    stage.innerHTML=`<div class="single${fin?" finished finished-ring":""}" style="--tint:${p.tint}">
+      <div class="pane-bar"><span class="pdot" style="background:${pn.dot}"></span> ${pn.label}<span class="pid">${pn.id}</span></div>
+      <div class="term">${pn.html}</div>
+      <div class="composer">
+        <div class="input"><span class="pr">❯</span> <span class="cursor"></span></div>
+        <div class="composer-foot"><span class="bp">⏵⏵ bypass permissions on</span><span class="right">244 924 tokens</span></div>
+      </div></div>`;
+    return;
+  }
+
+  if(layout==="stack"){
+    if(stackTop>=p.panes.length) stackTop=0;
+    const top=p.panes[stackTop];
+    const tabs=p.panes.map((pn,i)=>`<div class="stack-tab ${i===stackTop?"on":""}" style="--tint:${p.tint}" data-i="${i}">
+        <span class="d" style="background:${pn.dot}"></span> ${pn.label.split(" · ")[0]} · ${pn.id}</div>`).join("");
+    stage.innerHTML=`<div class="stackwrap">
+        <div class="stack-tabs">${tabs}</div>
+        <div class="stack-area">
+          <div class="stack-card c2"></div><div class="stack-card c1"></div>
+          ${paneCell(p, top, "")}
+        </div></div>`;
+    stage.querySelectorAll(".stack-tab").forEach(el=>el.onclick=()=>{ stackTop=+el.dataset.i; renderStage(); });
+    const pane=stage.querySelector(".stack-area .pane");
+    if(pane) pane.onclick=(e)=>{ if(!e.target.closest(".x")) openPane(p.id, top.id); };
+    wireCtl(stage, p);
+    return;
+  }
+
+  const R=rects(layout, p.panes.length);
+  const cells=p.panes.map((pn,i)=>{
+    const r=R[i];
+    const style=`left:calc(${(r.x*100).toFixed(4)}% + 5px); top:calc(${(r.y*100).toFixed(4)}% + 5px);`
+      +`width:calc(${(r.w*100).toFixed(4)}% - 10px); height:calc(${(r.h*100).toFixed(4)}% - 10px);`;
+    return paneCell(p, pn, style);
+  }).join("");
+  stage.innerHTML=`<div class="grid">${cells}</div>`;
+  stage.querySelectorAll(".pane").forEach(el=>el.onclick=(e)=>{ if(!e.target.closest(".x")) openPane(p.id, el.dataset.pane); });
+  wireCtl(stage, p);
+}
+
+function wireCtl(stage, p){
+  stage.querySelectorAll(".pane-ctl .z").forEach(el=>el.onclick=(e)=>{ e.stopPropagation();
+    openPane(p.id, el.closest(".pane").dataset.pane); });
+  stage.querySelectorAll(".pane-ctl .x").forEach(el=>el.onclick=(e)=>{ e.stopPropagation(); /* démo : pas de fermeture réelle */ });
+}
+
+function render(){ renderRail(); renderCrumb(); renderStage(); }
+function selectProject(id){ activeProj=id; zoomPane=null; stackTop=0; render(); }
+function openPane(pid, paneId){ activeProj=pid; zoomPane=paneId; render(); }
+function cycleLayout(){
+  const i=LAYOUTS.findIndex(l=>l.id===layout);
+  layout=LAYOUTS[(i+1)%LAYOUTS.length].id; stackTop=0;
+  document.getElementById("layBtn").title="Disposition : "+LAYOUTS.find(l=>l.id===layout).name;
+  if(!zoomPane) renderStage();
+}
+
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && zoomPane){ zoomPane=null; render(); }});
+render();
+document.getElementById("layBtn").onclick=cycleLayout;
+</script>
+</body>
+</html>
