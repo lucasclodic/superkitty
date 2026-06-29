@@ -30,6 +30,10 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        // Native macOS notifications (#6) attributed to superkitty's own bundle —
+        // far more reliable than osascript (which macOS attributes to "Script
+        // Editor" and silences/rate-limits).
+        .plugin(tauri_plugin_notification::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _shortcut, event| {
@@ -44,6 +48,9 @@ pub fn run() {
             // Best-effort: a failure (combo taken, no accessibility perms…)
             // must not stop the app from launching.
             let _ = app.global_shortcut().register(quake);
+            // Clear stale agent-signal markers (#6): any present before a pane has
+            // spawned was left by a crash and would mis-tag a reused id's first bell.
+            pty::clear_stale_signals();
             Ok(())
         })
         .manage(PtyManager::default())
@@ -78,16 +85,21 @@ pub fn run() {
             pty::pty_kill,
             pty::pty_cwd,
             pty::pty_foreground,
+            pty::pty_foreground_cmd,
             pty::pty_scroll_state,
             pty::pty_scroll_to,
             pty::pty_scroll,
             pty::tmux_list_sessions,
             pty::tmux_kill_session,
-            pty::notify,
+            pty::install_claude_hooks,
+            pty::uninstall_claude_hooks,
             pty::play_sound,
             pty::save_image,
             pty::clipboard_file_paths,
             pty::list_files,
+            pty::list_dirs,
+            pty::shell_history,
+            pty::pane_context,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
